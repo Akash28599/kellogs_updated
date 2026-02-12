@@ -1,11 +1,11 @@
 node_modules/
 .env
-uploads/*
-!uploads/.gitkeep
-results/*
-!results/.gitkeep
-models/*
-!models/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/results/*
+!backend/results/.gitkeep
+backend/models/*
+!backend/models/.gitkeep
 __pycache__/
 *.pyc
 .DS_Store
