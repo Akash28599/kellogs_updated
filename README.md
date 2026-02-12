@@ -19,8 +19,22 @@ Or for basic functionality:
 pip install opencv-python pillow numpy
 ```
 
-### 3. Add Template Images ⚠️ IMPORTANT
-Copy your superhero template images to the `templates/` folder:
+### 3. Setup AI Models (Required for Face Swap) 🧠
+
+You need to manually download the face swap model file.
+
+1.  **Download Model**:
+    - **File**: `inswapper_128.onnx`
+    - **Link**: [Download from Hugging Face](https://huggingface.co/ezioruan/inswapper_128.onnx/resolve/main/inswapper_128.onnx) (approx. 554 MB)
+
+2.  **Place in Models Directory**:
+    - Create a `models` folder inside `backend/` if it doesn't exist.
+    - Move the downloaded `inswapper_128.onnx` file into `backend/models/`.
+
+> **Note**: The face detection models (`buffalo_l`) will be automatically downloaded by the script on the first run.
+
+### 4. Add Template Images ⚠️ IMPORTANT
+Copy your superhero template images to the `backend/templates/` folder:
 
 | Filename | Theme |
 |----------|-------|
@@ -80,11 +94,17 @@ The system supports multiple face swap methods:
 
 ## ⚙️ Configuration
 
-Edit `.env` file:
+Copy `.env.example` to `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Or manually create `.env`:
+
 ```env
 PORT=5000
 FRONTEND_URL=http://localhost:5173
-PYTHON_PATH=python
 ```
 
 ## 📝 Notes

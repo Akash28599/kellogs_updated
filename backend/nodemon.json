@@ -1,0 +1,8 @@
+{
+    "ignore": [
+        "results/*",
+        "uploads/*",
+        "models/*"
+    ],
+    "delay": "2500"
+}

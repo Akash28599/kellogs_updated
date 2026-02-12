@@ -1,7 +1,13 @@
 # Pro Face Swap Dependencies
 # Install with: pip install -r requirements.txt
 
-# Core (required)
+# Core (required for InsightFace / DeepFace integration)
+insightface==0.7.3
+onnxruntime
 opencv-python>=4.8.0
-numpy>=1.24.0
+
+# Critical: Keep numpy version below 2.0 to avoid compatibility issues with onnxruntime
+numpy<2
+
+# Legacy / Optional (for alternative face detection fallback)
 mediapipe>=0.10.0
