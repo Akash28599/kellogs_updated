@@ -1,0 +1,668 @@
+/* Landing Page Specific Styles */
+.landing-page {
+    width: 100%;
+    overflow-x: hidden;
+    background-color: #FFF8F0;
+    /* Warm off-white background */
+    color: #4A2C2A;
+    /* Dark brown text */
+}
+
+/* Animations */
+.fade-in-up {
+    animation: fadeInUp 0.8s ease-out forwards;
+}
+
+.fade-in-left {
+    animation: fadeInLeft 1s ease-out forwards;
+}
+
+.pulse-animation {
+    animation: pulse 2s infinite;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(227, 25, 55, 0.4);
+    }
+
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 15px rgba(227, 25, 55, 0);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(227, 25, 55, 0);
+    }
+}
+
+/* Typography Helpers */
+.text-red {
+    color: #D31245;
+}
+
+.text-gold {
+    background: linear-gradient(135deg, #FFB81C 0%, #F5A623 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: #FFB81C;
+}
+
+.text-white {
+    color: #FFFFFF;
+}
+
+.text-white-dim {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.mt-xl {
+    margin-top: 3rem;
+}
+
+/* Sections General */
+section {
+    padding: 5rem 0;
+    position: relative;
+}
+
+.container {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: 5rem;
+}
+
+.section-header h2 {
+    font-size: 3.5rem;
+    font-weight: 900;
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+}
+
+.section-header p {
+    font-size: 1.3rem;
+    max-width: 650px;
+    margin: 0 auto;
+    opacity: 0.7;
+}
+
+/* Hero Section */
+.hero-section {
+    min-height: 95vh;
+    display: flex;
+    align-items: center;
+    background: radial-gradient(circle at 70% 30%, rgba(255, 184, 28, 0.15) 0%, transparent 60%);
+    padding-top: 6rem;
+}
+
+.hero-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4rem;
+    width: 100%;
+}
+
+.hero-content {
+    flex: 1;
+    max-width: 650px;
+}
+
+.hero-title {
+    font-size: 5rem;
+    line-height: 1;
+    font-weight: 900;
+    margin-bottom: 1.5rem;
+    letter-spacing: -2px;
+}
+
+.hero-subtitle {
+    font-size: 1.4rem;
+    line-height: 1.6;
+    margin-bottom: 3rem;
+    opacity: 0.85;
+    color: #5D4037;
+}
+
+.hero-badges {
+    display: flex;
+    gap: 1rem;
+    margin-top: 3rem;
+    flex-wrap: wrap;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: white;
+    padding: 0.6rem 1.2rem;
+    border-radius: 50px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    color: #5D4037;
+    border: 1px solid rgba(0, 0, 0, 0.02);
+}
+
+/* Hero Images */
+.hero-image-container {
+    flex: 1;
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+.main-image-wrapper {
+    position: relative;
+    width: 550px;
+    height: 650px;
+}
+
+.main-hero-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 40px;
+    /* Thick white border effect maybe? No, let's stick to clean */
+    box-shadow: 20px 20px 0 rgba(255, 184, 28, 0.2), 0 20px 40px rgba(0, 0, 0, 0.1);
+    display: block;
+}
+
+.floating-card {
+    position: absolute;
+    background: white;
+    padding: 0.5rem;
+    border-radius: 20px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    width: 180px;
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 4px solid white;
+}
+
+.floating-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 16px;
+}
+
+.floating-card.top-right {
+    top: 40px;
+    right: -50px;
+    transform: rotate(5deg);
+}
+
+.floating-card.bottom-left {
+    bottom: 80px;
+    left: -80px;
+    width: 200px;
+    height: 200px;
+    transform: rotate(-5deg);
+}
+
+.floating-card.bottom-right {
+    bottom: -40px;
+    right: -20px;
+    background: #5D4037;
+    color: white;
+    transform: rotate(3deg);
+}
+
+.badge-top-left {
+    position: absolute;
+    top: 40px;
+    left: -30px;
+    background: white;
+    padding: 1rem 1.5rem;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.1rem;
+}
+
+.choco-content {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.choco-icon {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+}
+
+/* How It Works */
+.how-it-works {
+    background: white;
+    padding: 8rem 0;
+}
+
+.steps-row {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    flex-wrap: wrap;
+}
+
+.step-card {
+    flex: 1;
+    min-width: 300px;
+    max-width: 380px;
+    padding: 3rem 2rem;
+    border-radius: 30px;
+    background: #FFFBF5;
+    /* Very light cream */
+    border: 2px solid rgba(255, 184, 28, 0.1);
+    text-align: center;
+    position: relative;
+    transition: transform 0.3s ease;
+}
+
+.step-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 50px rgba(255, 184, 28, 0.15);
+    border-color: #FFB81C;
+}
+
+.step-number-bg {
+    position: absolute;
+    top: 2rem;
+    right: 2rem;
+    font-size: 6rem;
+    font-weight: 900;
+    color: rgba(255, 184, 28, 0.15);
+    /* Faint gold */
+    line-height: 1;
+}
+
+.step-icon {
+    width: 100px;
+    height: 100px;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    margin: 0 auto 2rem;
+    color: white;
+    position: relative;
+    z-index: 2;
+}
+
+.red-bg {
+    background: linear-gradient(135deg, #D31245, #b30e38);
+    box-shadow: 0 15px 30px rgba(211, 18, 69, 0.2);
+}
+
+.gold-bg {
+    background: linear-gradient(135deg, #FFB81C, #f5a623);
+    box-shadow: 0 15px 30px rgba(255, 184, 28, 0.2);
+}
+
+.brown-bg {
+    background: linear-gradient(135deg, #5D4037, #3e2723);
+    box-shadow: 0 15px 30px rgba(93, 64, 55, 0.2);
+}
+
+.step-card h3 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    font-weight: 800;
+    color: #2D2D2D;
+}
+
+.step-card p {
+    color: #666;
+    font-size: 1.1rem;
+}
+
+.step-pill {
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem 1.2rem;
+    border-radius: 50px;
+    color: white;
+    font-weight: 700;
+    font-size: 0.9rem;
+    z-index: 5;
+    white-space: nowrap;
+}
+
+.red-pill {
+    background: #5D4037;
+}
+
+/* Choco color */
+.brown-pill {
+    background: #5D4037;
+}
+
+/* Powered By */
+.powered-by {
+    background: #FFF8F0;
+    overflow: visible;
+    /* Allow floating badges */
+}
+
+.powered-grid {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3rem;
+    margin-bottom: 5rem;
+    position: relative;
+    padding: 2rem;
+}
+
+.powered-image {
+    position: relative;
+    border-radius: 30px;
+    transition: transform 0.3s ease;
+}
+
+.powered-image:hover {
+    transform: scale(1.02);
+}
+
+.powered-image img {
+    border-radius: 30px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    display: block;
+    border: 6px solid white;
+}
+
+.powered-image.left img {
+    width: 450px;
+    height: 350px;
+    object-fit: cover;
+}
+
+.powered-image.right img {
+    width: 550px;
+    height: 450px;
+    object-fit: cover;
+}
+
+.floating-badge {
+    position: absolute;
+    padding: 0.8rem 1.8rem;
+    border-radius: 50px;
+    color: white;
+    font-weight: 800;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    transform: rotate(-5deg);
+    z-index: 2;
+    font-size: 1.1rem;
+    border: 3px solid white;
+}
+
+.badge-yellow {
+    background: #FFB81C;
+    top: -20px;
+    left: -20px;
+    color: #5D4037;
+}
+
+.badge-red {
+    background: #D31245;
+    bottom: 40px;
+    left: -40px;
+}
+
+.pill-badge {
+    position: absolute;
+    background: #5D4037;
+    color: white;
+    padding: 0.6rem 1.5rem;
+    border-radius: 50px;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    border: 2px solid white;
+}
+
+.top-center {
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.right-float {
+    top: 20px;
+    right: 20%;
+    transform: rotate(10deg);
+    background: #8D6E63;
+}
+
+.features-row {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    text-align: center;
+}
+
+.feature-item {
+    background: white;
+    padding: 3rem;
+    border-radius: 30px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.05);
+    min-width: 250px;
+    transition: transform 0.3s ease;
+}
+
+.feature-item:hover {
+    transform: translateY(-5px);
+}
+
+.feature-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.feature-item h3 {
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: #2D2D2D;
+    margin-bottom: 0.2rem;
+}
+
+.feature-item p {
+    color: #888;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Celebration Section */
+.celebration-section {
+    background: #D31245;
+    color: white;
+}
+
+.celebration-grid {
+    display: flex;
+    gap: 2.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.celebration-card {
+    position: relative;
+    width: 380px;
+    height: 500px;
+    border-radius: 30px;
+    overflow: hidden;
+    border: 4px solid #FFB81C;
+    transition: all 0.4s ease;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.celebration-card:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+}
+
+.celebration-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.card-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+    padding: 3rem 2rem 2rem;
+    color: white;
+}
+
+.card-heart {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #D31245;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Footer Landing */
+.footer-landing {
+    background: #3E2723;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 6rem 0 2rem;
+}
+
+.footer-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 5rem;
+    margin-bottom: 5rem;
+}
+
+.footer-logo {
+    font-family: 'Brush Script MT', cursive;
+    /* Fallback for Kellogg's font */
+    font-size: 3.5rem;
+    color: #D31245;
+    /* Red logo on dark background? No, usually white or red with stroke */
+    color: white;
+    margin-bottom: 1.5rem;
+}
+
+/* Buttons */
+.btn-lg {
+    padding: 1.2rem 3rem;
+    font-size: 1.2rem;
+    font-weight: 800;
+    border-radius: 50px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 15px 30px rgba(211, 18, 69, 0.4);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #D31245 0%, #FF0033 100%);
+}
+
+.btn-secondary {
+    background: #FFB81C;
+    color: #5D4037;
+    box-shadow: 0 15px 30px rgba(255, 184, 28, 0.4);
+}
+
+.btn-white {
+    background: white;
+    color: #D31245;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .hero-container {
+        flex-direction: column;
+        text-align: center;
+        padding-top: 4rem;
+    }
+
+    .hero-content {
+        max-width: 100%;
+    }
+
+    .main-image-wrapper {
+        width: 100%;
+        height: 500px;
+    }
+
+    .powered-grid {
+        flex-direction: column;
+        padding: 0;
+    }
+
+    .powered-image.left img,
+    .powered-image.right img {
+        width: 100%;
+        height: auto;
+    }
+
+    .footer-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+
+    .social-icons {
+        justify-content: center;
+    }
+}

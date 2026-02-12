@@ -1,0 +1,229 @@
+:root {
+    /* Kellogg's Palette */
+    --kelloggs-red: #E41E26;
+    --kelloggs-yellow: #F7C600;
+    --kelloggs-cream: #FFF6E5;
+    --kelloggs-brown: #4A2C2A;
+
+    /* Text Colors */
+    --text-dark: #4A2C2A;
+    --text-light: #FFF6E5;
+
+    /* Spacing & Radius */
+    --radius-card: 24px;
+    --radius-btn: 50px;
+
+    /* Fonts */
+    --font-heading: 'Poppins', sans-serif;
+    --font-body: 'Outfit', sans-serif;
+}
+
+body {
+    background-color: var(--kelloggs-cream);
+    color: var(--text-dark);
+    font-family: var(--font-body);
+}
+
+.app-wizard {
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Header */
+.wizard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 2rem;
+}
+
+.kelloggs-logo {
+    font-family: 'Brush Script MT', cursive;
+    color: var(--kelloggs-red);
+    font-size: 2.5rem;
+    transform: rotate(-5deg);
+}
+
+/* Steps */
+.steps-progress {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 3rem;
+    flex-wrap: wrap;
+}
+
+.step-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0.5;
+    font-weight: 600;
+    color: var(--kelloggs-brown);
+}
+
+.step-item.active {
+    opacity: 1;
+    color: var(--kelloggs-red);
+}
+
+.step-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+.step-item.active .step-circle {
+    background: var(--kelloggs-red);
+    color: white;
+    border-color: var(--kelloggs-red);
+}
+
+/* Cards & Grid */
+.wizard-card {
+    background: white;
+    border-radius: var(--radius-card);
+    padding: 3rem;
+    box-shadow: 0 10px 30px rgba(74, 44, 42, 0.05);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.theme-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.theme-option {
+    background: var(--kelloggs-cream);
+    border: 4px solid transparent;
+    padding: 2rem;
+    border-radius: var(--radius-card);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.theme-option:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 30px rgba(247, 198, 0, 0.2);
+}
+
+.theme-option.selected {
+    border-color: var(--kelloggs-red);
+    background: white;
+    box-shadow: 0 15px 30px rgba(228, 30, 38, 0.15);
+}
+
+.theme-icon-lg {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    color: var(--kelloggs-red);
+}
+
+/* Upload Area */
+.upload-zone {
+    border: 3px dashed var(--kelloggs-brown);
+    border-radius: var(--radius-card);
+    padding: 4rem 2rem;
+    background: var(--kelloggs-cream);
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.upload-zone:hover,
+.upload-zone.drag-active {
+    background: #FFF;
+    border-color: var(--kelloggs-red);
+}
+
+/* Buttons */
+.btn-kelloggs {
+    background: var(--kelloggs-red);
+    color: white;
+    padding: 1rem 2.5rem;
+    border-radius: var(--radius-btn);
+    font-weight: 700;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 10px 20px rgba(228, 30, 38, 0.3);
+    transition: transform 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-kelloggs:hover {
+    transform: scale(1.05);
+    background: #Cc1a22;
+}
+
+.btn-kelloggs.secondary {
+    background: var(--kelloggs-yellow);
+    color: var(--text-dark);
+    box-shadow: 0 10px 20px rgba(247, 198, 0, 0.3);
+}
+
+/* Animations */
+.loading-container {
+    text-align: center;
+    padding: 4rem 0;
+}
+
+.progress-bar-container {
+    width: 100%;
+    max-width: 400px;
+    height: 12px;
+    background: rgba(74, 44, 42, 0.1);
+    border-radius: var(--radius-btn);
+    margin: 2rem auto;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: var(--kelloggs-red);
+    border-radius: var(--radius-btn);
+    transition: width 0.3s ease;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .wizard-card {
+        padding: 1.5rem;
+    }
+
+    .kelloggs-logo {
+        font-size: 2rem;
+    }
+
+    .steps-progress span {
+        display: none;
+        /* Hide labels on mobile */
+    }
+
+    .step-circle {
+        width: 28px;
+        height: 28px;
+        font-size: 0.9rem;
+    }
+}
+
+.chocos-float {
+    position: absolute;
+    width: 120px;
+    z-index: 0;
+    opacity: 0.1;
+    pointer-events: none;
+}
