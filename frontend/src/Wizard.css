@@ -1,229 +1,1172 @@
+/* ===== WIZARD — FIGMA REDESIGN v2 ===== */
+
 :root {
-    /* Kellogg's Palette */
-    --kelloggs-red: #E41E26;
-    --kelloggs-yellow: #F7C600;
-    --kelloggs-cream: #FFF6E5;
+    --kelloggs-red: #F60945;
+    --kelloggs-yellow: #FFC700;
+    --kelloggs-cream: #FFF8F0;
     --kelloggs-brown: #4A2C2A;
-
-    /* Text Colors */
-    --text-dark: #4A2C2A;
-    --text-light: #FFF6E5;
-
-    /* Spacing & Radius */
-    --radius-card: 24px;
+    --text-dark: #222;
+    --text-light: #FFF;
+    --radius-card: 20px;
     --radius-btn: 50px;
-
-    /* Fonts */
     --font-heading: 'Poppins', sans-serif;
-    --font-body: 'Outfit', sans-serif;
+    --font-body: 'Inter', 'Outfit', sans-serif;
 }
 
-body {
-    background-color: var(--kelloggs-cream);
-    color: var(--text-dark);
-    font-family: var(--font-body);
-}
-
+/* ---- Wizard Layout ---- */
 .app-wizard {
     min-height: 100vh;
-    padding: 2rem 1rem;
-    max-width: 1200px;
-    margin: 0 auto;
+    background: #fff;
+    font-family: var(--font-body);
+    position: relative;
+    overflow-x: hidden;
 }
 
-/* Header */
+/* Loading page gets cream background */
+.app-wizard.loading-bg {
+    background: linear-gradient(180deg, #FFF6EE 0%, #FFF0E3 50%, #FFFAF4 100%);
+}
+
+/* ---- Wizard Header/Nav ---- */
 .wizard-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding-bottom: 2rem;
+    justify-content: center;
+    padding: 14px 30px;
+    background: #fff;
+    border-bottom: 1px solid #f0f0f0;
+    position: relative;
+    z-index: 10;
+}
+
+.wizard-back-btn {
+    position: absolute;
+    left: 30px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #444;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.wizard-back-btn:hover {
+    color: var(--kelloggs-red);
 }
 
 .kelloggs-logo {
-    font-family: 'Brush Script MT', cursive;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 900;
+    font-style: italic;
+    font-size: 1.5rem;
     color: var(--kelloggs-red);
-    font-size: 2.5rem;
-    transform: rotate(-5deg);
+    letter-spacing: -0.5px;
 }
 
-/* Steps */
-.steps-progress {
+/* Step indicator (right side, top) */
+.wizard-step-indicator {
+    position: absolute;
+    right: 30px;
     display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: #333;
+}
+
+.wizard-step-badge {
+    display: flex;
+    align-items: center;
     justify-content: center;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 3rem;
-    flex-wrap: wrap;
-}
-
-.step-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    opacity: 0.5;
-    font-weight: 600;
-    color: var(--kelloggs-brown);
-}
-
-.step-item.active {
-    opacity: 1;
-    color: var(--kelloggs-red);
-}
-
-.step-circle {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
-    border: 2px solid currentColor;
+    background: var(--kelloggs-red);
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.78rem;
+}
+
+.wizard-user-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #F60945, #FF4D6D);
     display: flex;
     align-items: center;
     justify-content: center;
+    color: #fff;
+    font-size: 1rem;
+    overflow: hidden;
+}
+
+.wizard-user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* ---- Progress Steps (hidden in new design) ---- */
+.steps-progress {
+    display: none;
+}
+
+/* ---- Wizard Card ---- */
+.wizard-card {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px 60px;
+    text-align: center;
+    position: relative;
+}
+
+/* ---- Upload Page ---- */
+.upload-page-title {
+    font-family: var(--font-heading);
+    font-weight: 900;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    color: var(--text-dark);
+    margin-bottom: 10px;
+}
+
+/* Red highlight text in title */
+.title-red {
+    color: var(--kelloggs-red);
+}
+
+.upload-page-subtitle {
+    font-size: 0.95rem;
+    color: #888;
+    margin-bottom: 32px;
+}
+
+/* Upload Zone — Red with dashed white border */
+.upload-zone {
+    background: linear-gradient(135deg, #F60945 0%, #FF4D6D 100%);
+    border: 3px dashed #fff;
+    border-radius: var(--radius-card);
+    padding: 60px 30px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    color: #fff;
+    text-align: center;
+}
+
+.upload-zone:hover {
+    background: linear-gradient(135deg, #C9142F 0%, #E84362 100%);
+    box-shadow: 0 8px 30px rgba(227, 24, 55, 0.25);
+}
+
+.upload-zone.drag-active {
+    background: linear-gradient(135deg, #b81030 0%, #d63a58 100%);
+    border-color: var(--kelloggs-yellow);
+    box-shadow: 0 8px 30px rgba(227, 24, 55, 0.35);
+}
+
+.upload-zone-icon {
+    font-size: 2.5rem;
+    margin-bottom: 16px;
+    opacity: 0.9;
+}
+
+.upload-zone-title {
+    font-family: var(--font-heading);
+    font-weight: 800;
+    font-size: 1.2rem;
+    color: #fff;
+    margin-bottom: 8px;
+}
+
+.upload-zone-subtitle {
+    font-size: 0.88rem;
+    color: rgba(255, 255, 255, 0.75);
+    margin-bottom: 16px;
+}
+
+.upload-zone-formats {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.1);
+    padding: 6px 14px;
+    border-radius: 999px;
+}
+
+/* Upload Preview */
+.upload-preview-container {
+    position: relative;
+    display: inline-block;
+}
+
+.upload-preview-container img {
+    max-width: 300px;
+    border-radius: 16px;
+    border: 3px solid #fff;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.upload-change-text {
+    margin-top: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    font-style: italic;
+    font-size: 0.88rem;
+}
+
+/* Tips Card */
+.tips-card {
+    max-width: 700px;
+    margin: 28px auto 0;
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 16px;
+    padding: 24px 28px;
+    text-align: left;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.tips-card-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #333;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tips-card ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tips-card ul li {
+    font-size: 0.88rem;
+    color: #777;
+    padding: 4px 0;
+    padding-left: 16px;
+    position: relative;
+}
+
+.tips-card ul li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: var(--kelloggs-red);
     font-weight: 700;
 }
 
-.step-item.active .step-circle {
-    background: var(--kelloggs-red);
-    color: white;
-    border-color: var(--kelloggs-red);
+/* ============================================
+   THEME GRID — 4 columns per Figma screenshot 1
+   ============================================ */
+.theme-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 24px;
 }
 
-/* Cards & Grid */
-.wizard-card {
-    background: white;
-    border-radius: var(--radius-card);
-    padding: 3rem;
-    box-shadow: 0 10px 30px rgba(74, 44, 42, 0.05);
-    text-align: center;
+.theme-option {
+    background: #fff;
+    border: 1px solid #eee;
+    padding: 20px 14px;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: left;
+}
+
+.theme-option:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    border-color: rgba(227, 24, 55, 0.2);
+}
+
+/* Selected theme: RED/PINK background with white text */
+.theme-option.selected {
+    background: linear-gradient(135deg, #F60945 0%, #FF4D6D 100%);
+    border-color: transparent;
+    box-shadow: 0 8px 24px rgba(227, 24, 55, 0.25);
+}
+
+.theme-option.selected h3,
+.theme-option.selected p {
+    color: #fff !important;
+}
+
+.theme-icon-lg {
+    font-size: 2rem;
+    margin-bottom: 0.8rem;
+    color: var(--kelloggs-red);
+}
+
+.theme-option.selected .theme-icon-lg {
+    color: #fff;
+}
+
+/* ============================================
+   LOADING PAGE — Figma screenshot 2
+   Cream background, floating stars, centered white card, 
+   progress bar with %, theme info card
+   ============================================ */
+.loading-view {
+    min-height: 100vh;
+    background: linear-gradient(180deg, #FFF0F3 0%, #FFF6EE 30%, #FFFAF4 60%, #FFF6EE 100%);
     position: relative;
     overflow: hidden;
 }
 
-.theme-grid {
+/* Center just Kellogg's logo on loading page */
+.loading-header {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.loading-header .kelloggs-logo {
+    font-size: 1.4rem;
+}
+
+.loading-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 80px);
+    padding: 0 20px;
+}
+
+.loading-card {
+    background: #fff;
+    border-radius: 24px;
+    padding: 48px 40px 36px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.06);
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+}
+
+.loading-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FF8C00, #FF6B00);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 1.6rem;
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(255, 107, 0, 0.3);
+}
+
+.loading-title {
+    font-family: var(--font-heading);
+    font-weight: 800;
+    font-size: 1.4rem;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+}
+
+.loading-subtitle {
+    font-size: 0.95rem;
+    color: #888;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* Progress bar with label and percentage */
+.loading-progress-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.loading-progress-label {
+    color: #999;
+}
+
+.loading-progress-pct {
+    color: var(--kelloggs-red);
+    font-weight: 700;
+}
+
+.loading-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #FFE0E6;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.loading-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #F60945, #FF4D6D);
+    border-radius: 999px;
+}
+
+/* Theme info card below progress */
+.loading-theme-card {
+    background: #FFF0F3;
+    border-radius: 14px;
+    padding: 16px 20px;
+    text-align: center;
+}
+
+.loading-theme-title {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+
+.loading-theme-subtitle {
+    font-size: 0.82rem;
+    color: #888;
+}
+
+/* Dots indicator */
+.loading-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 20px;
+}
+
+.loading-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ddd;
+}
+
+.loading-dot.active {
+    background: var(--kelloggs-red);
+}
+
+/* Floating sparkle stars in loading page */
+.loading-sparkle {
+    position: absolute;
+    pointer-events: none;
+    z-index: 0;
+    animation: sparkleFloat 6s ease-in-out infinite;
+    opacity: 0.4;
+}
+
+@keyframes sparkleFloat {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* ============================================
+   RESULT PAGE — Figma screenshot 3
+   ============================================ */
+.result-page {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+    text-align: center;
+}
+
+.result-title {
+    font-family: var(--font-heading);
+    font-weight: 900;
+    font-size: clamp(1.5rem, 3.5vw, 2rem);
+    color: var(--text-dark);
+    margin-bottom: 6px;
+}
+
+.result-subtitle {
+    font-size: 0.9rem;
+    color: #888;
+    margin-bottom: 24px;
+}
+
+.result-subtitle a {
+    color: var(--kelloggs-red);
+    text-decoration: none;
+}
+
+/* Theme info banner at top of result */
+.result-theme-banner {
+    background: linear-gradient(135deg, #FFF0F3 0%, #FFF6EE 100%);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.result-theme-icon {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+}
+
+.result-theme-name {
+    font-family: var(--font-heading);
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+
+.result-theme-desc {
+    font-size: 0.82rem;
+    color: #888;
+}
+
+/* Side by side photos */
+.result-photos {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 2rem;
-    margin-top: 2rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
 }
 
-.theme-option {
-    background: var(--kelloggs-cream);
-    border: 4px solid transparent;
-    padding: 2rem;
-    border-radius: var(--radius-card);
+.result-photo-card {
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+}
+
+.result-photo-label {
+    padding: 10px;
+    font-weight: 700;
+    font-size: 0.82rem;
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+
+.result-photo-label.original {
+    background: #F0F0F0;
+    color: #555;
+}
+
+.result-photo-label.ai-generated {
+    background: linear-gradient(135deg, #F60945 0%, #FF4D6D 100%);
+    color: #fff;
+}
+
+.result-photo-card img {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    display: block;
+}
+
+/* Buttons row */
+.result-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+}
+
+.result-btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #ddd;
+    background: #fff;
+    color: #555;
 }
 
-.theme-option:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 15px 30px rgba(247, 198, 0, 0.2);
-}
-
-.theme-option.selected {
+.result-btn.primary {
+    background: var(--kelloggs-red);
+    color: #fff;
     border-color: var(--kelloggs-red);
-    background: white;
-    box-shadow: 0 15px 30px rgba(228, 30, 38, 0.15);
+    box-shadow: 0 4px 16px rgba(227, 24, 55, 0.2);
 }
 
-.theme-icon-lg {
-    font-size: 4rem;
-    margin-bottom: 1rem;
+.result-btn.primary:hover {
+    background: #c4142f;
+    transform: translateY(-2px);
+}
+
+.result-btn:hover {
+    border-color: var(--kelloggs-red);
     color: var(--kelloggs-red);
 }
 
-/* Upload Area */
-.upload-zone {
-    border: 3px dashed var(--kelloggs-brown);
-    border-radius: var(--radius-card);
-    padding: 4rem 2rem;
-    background: var(--kelloggs-cream);
-    cursor: pointer;
-    transition: all 0.3s;
+/* Superhero features section */
+.result-features {
+    border-top: 1px solid #f0f0f0;
+    padding-top: 28px;
+    margin-bottom: 28px;
 }
 
-.upload-zone:hover,
-.upload-zone.drag-active {
-    background: #FFF;
-    border-color: var(--kelloggs-red);
+.result-features-title {
+    font-family: var(--font-heading);
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--text-dark);
+    margin-bottom: 20px;
 }
 
-/* Buttons */
-.btn-kelloggs {
+.result-features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.result-feature-item {
+    text-align: center;
+}
+
+.result-feature-icon {
+    font-size: 1.4rem;
+    margin-bottom: 8px;
+}
+
+.result-feature-name {
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: var(--kelloggs-red);
+    margin-bottom: 4px;
+}
+
+.result-feature-desc {
+    font-size: 0.75rem;
+    color: #999;
+    line-height: 1.4;
+}
+
+/* CTA at bottom of result */
+.result-cta {
+    background: linear-gradient(135deg, #FFF0F3 0%, #FFF6EE 100%);
+    border-radius: 16px;
+    padding: 28px 20px;
+    text-align: center;
+}
+
+.result-cta-title {
+    font-family: var(--font-heading);
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--text-dark);
+    margin-bottom: 6px;
+}
+
+.result-cta-desc {
+    font-size: 0.82rem;
+    color: #888;
+    margin-bottom: 16px;
+}
+
+.result-cta-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     background: var(--kelloggs-red);
+    color: #fff;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 16px rgba(227, 24, 55, 0.2);
+}
+
+.result-cta-btn:hover {
+    background: #c4142f;
+    transform: translateY(-2px);
+}
+
+/* ---- Buttons (legacy) ---- */
+.btn-kelloggs {
+    background: linear-gradient(135deg, #F60945 0%, #FF4D6D 100%);
     color: white;
-    padding: 1rem 2.5rem;
+    padding: 14px 32px;
     border-radius: var(--radius-btn);
     font-weight: 700;
     text-transform: uppercase;
     border: none;
     cursor: pointer;
-    box-shadow: 0 10px 20px rgba(228, 30, 38, 0.3);
-    transition: transform 0.2s;
+    box-shadow: 0 6px 20px rgba(227, 24, 55, 0.25);
+    transition: all 0.25s ease;
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 8px;
+    font-size: 0.92rem;
+    letter-spacing: 0.5px;
 }
 
 .btn-kelloggs:hover {
-    transform: scale(1.05);
-    background: #Cc1a22;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(227, 24, 55, 0.3);
+}
+
+.btn-kelloggs:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
 }
 
 .btn-kelloggs.secondary {
-    background: var(--kelloggs-yellow);
-    color: var(--text-dark);
-    box-shadow: 0 10px 20px rgba(247, 198, 0, 0.3);
+    background: #f5f5f5;
+    color: #555;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
 }
 
-/* Animations */
-.loading-container {
-    text-align: center;
-    padding: 4rem 0;
+.btn-kelloggs.secondary:hover {
+    background: #eee;
 }
 
+/* Legacy progress bar */
 .progress-bar-container {
     width: 100%;
     max-width: 400px;
-    height: 12px;
-    background: rgba(74, 44, 42, 0.1);
+    height: 10px;
+    background: #f0f0f0;
     border-radius: var(--radius-btn);
-    margin: 2rem auto;
+    margin: 24px auto;
     overflow: hidden;
 }
 
 .progress-bar-fill {
     height: 100%;
-    background: var(--kelloggs-red);
+    background: linear-gradient(90deg, #F60945, #FF4D6D);
     border-radius: var(--radius-btn);
-    transition: width 0.3s ease;
 }
 
-/* Responsive */
+/* Legacy loading container */
+.loading-container {
+    text-align: center;
+    padding: 60px 0;
+}
+
+/* ---- Floating Decorations ---- */
+.wizard-star {
+    position: absolute;
+    pointer-events: none;
+    z-index: 0;
+    animation: wizardStarFloat 6s ease-in-out infinite;
+}
+
+@keyframes wizardStarFloat {
+
+    0%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.6;
+    }
+
+    50% {
+        transform: translateY(-12px);
+        opacity: 0.3;
+    }
+}
+
+/* ---- Footer ---- */
+.wizard-footer {
+    text-align: center;
+    padding: 24px 20px;
+    color: #bbb;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* ---- Chocos Float (hide) ---- */
+.chocos-float {
+    display: none;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+    .theme-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
 @media (max-width: 768px) {
+    .wizard-header {
+        padding: 12px 20px;
+    }
+
+    .wizard-back-btn {
+        left: 16px;
+        font-size: 0.85rem;
+    }
+
+    .wizard-step-indicator {
+        right: 16px;
+        font-size: 0.8rem;
+    }
+
     .wizard-card {
-        padding: 1.5rem;
+        padding: 28px 16px 40px;
+    }
+
+    .upload-zone {
+        padding: 40px 20px;
     }
 
     .kelloggs-logo {
-        font-size: 2rem;
+        font-size: 1.3rem;
     }
 
-    .steps-progress span {
-        display: none;
-        /* Hide labels on mobile */
+    .theme-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
     }
 
-    .step-circle {
-        width: 28px;
-        height: 28px;
-        font-size: 0.9rem;
+    .loading-card {
+        padding: 36px 24px 28px;
+    }
+
+    .result-photos {
+        grid-template-columns: 1fr;
+        gap: 12px;
     }
 }
 
-.chocos-float {
+@media (max-width: 480px) {
+    .wizard-header {
+        padding: 10px 14px;
+    }
+
+    .wizard-back-btn {
+        left: 14px;
+        font-size: 0.82rem;
+    }
+
+    .wizard-step-indicator {
+        right: 14px;
+        font-size: 0.75rem;
+        gap: 6px;
+    }
+
+    .wizard-step-badge {
+        width: 24px;
+        height: 24px;
+        font-size: 0.7rem;
+    }
+
+    .wizard-user-avatar {
+        width: 28px;
+        height: 28px;
+    }
+
+    .kelloggs-logo {
+        font-size: 1.1rem;
+    }
+
+    .wizard-card {
+        padding: 20px 12px 32px;
+    }
+
+    .upload-zone {
+        padding: 32px 16px;
+        border-radius: 16px;
+    }
+
+    .upload-page-title {
+        font-size: 1.4rem;
+    }
+
+    .tips-card {
+        padding: 18px 20px;
+    }
+
+    .theme-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .result-features-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+
+    .story-textarea {
+        min-height: 140px;
+    }
+
+    .share-modal {
+        width: 90%;
+        padding: 28px 20px;
+    }
+}
+
+/* ===== WRITE HER STORY STEP ===== */
+.story-step {
+    text-align: center;
+}
+
+.story-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FF6B35, #FFB347);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 16px rgba(255, 107, 53, 0.3);
+}
+
+.story-textarea-wrapper {
+    position: relative;
+    margin-top: 28px;
+    max-width: 680px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.story-textarea {
+    width: 100%;
+    min-height: 180px;
+    border: 2px dashed #F60945;
+    border-radius: 16px;
+    padding: 20px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #333;
+    resize: vertical;
+    outline: none;
+    background: #fff;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.story-textarea:focus {
+    border-color: #F60945;
+    box-shadow: 0 0 0 4px rgba(227, 24, 55, 0.08);
+}
+
+.story-textarea::placeholder {
+    color: #aaa;
+    font-style: normal;
+}
+
+.story-word-count {
     position: absolute;
-    width: 120px;
-    z-index: 0;
-    opacity: 0.1;
-    pointer-events: none;
+    bottom: 14px;
+    right: 18px;
+    font-size: 0.82rem;
+    color: #999;
+    font-weight: 600;
+    background: #f9f9f9;
+    padding: 2px 10px;
+    border-radius: 8px;
+}
+
+.story-helper-text {
+    text-align: left;
+    max-width: 680px;
+    margin: 10px auto 0;
+    font-size: 0.85rem;
+    color: #888;
+}
+
+.writing-tips-card {
+    max-width: 680px;
+    margin: 24px auto 0;
+    background: #FFF8F0;
+    border: 1px solid #FFE0CC;
+    border-radius: 14px;
+    padding: 20px 24px;
+    text-align: left;
+}
+
+.writing-tips-title {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    color: #333;
+    margin-bottom: 12px;
+}
+
+.writing-tips-card ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.writing-tips-card ul li {
+    padding: 6px 0;
+    font-size: 0.9rem;
+    color: #555;
+    line-height: 1.5;
+}
+
+.writing-tips-card ul li::before {
+    content: '•';
+    color: #F60945;
+    font-weight: 700;
+    margin-right: 10px;
+}
+
+/* ===== SHARE MODAL ===== */
+.share-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.share-modal {
+    background: #fff;
+    border-radius: 20px;
+    padding: 36px 32px;
+    width: 420px;
+    max-width: 90%;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.share-modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.share-modal-close:hover {
+    color: #333;
+}
+
+.share-modal-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #FFF0F3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 1.5rem;
+}
+
+.share-modal-title {
+    text-align: center;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 800;
+    font-size: 1.3rem;
+    color: #222;
+    margin-bottom: 4px;
+}
+
+.share-modal-subtitle {
+    text-align: center;
+    font-size: 0.9rem;
+    color: #888;
+    margin-bottom: 24px;
+}
+
+.share-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.share-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.share-input-group label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #444;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.share-input-group input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.share-input-group input:focus {
+    border-color: #F60945;
+    box-shadow: 0 0 0 3px rgba(227, 24, 55, 0.06);
+}
+
+.share-submit-btn {
+    width: 100%;
+    padding: 14px;
+    background: #F60945;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.95rem;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 4px;
+}
+
+.share-submit-btn:hover {
+    background: #fff;
+    color: #F60945;
+    border-color: #F60945;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(246, 9, 69, 0.3);
+}
+
+.share-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.share-disclaimer {
+    text-align: center;
+    font-size: 0.78rem;
+    color: #999;
+    margin-top: 4px;
 }

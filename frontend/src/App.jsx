@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiUpload, FiDownload, FiRefreshCw, FiCheck, FiHeart, FiZap } from 'react-icons/fi';
+import { FiUpload, FiDownload, FiRefreshCw, FiCheck, FiHeart, FiZap, FiArrowLeft, FiShare2, FiX, FiPhone, FiMail, FiDollarSign, FiAlertCircle, FiEye, FiTool, FiSearch, FiVolume2, FiSun, FiHome, FiActivity } from 'react-icons/fi';
 import { GiCook, GiAlarmClock, GiJuggler, GiBookCover, GiNightSleep } from 'react-icons/gi';
 import axios from 'axios';
 import './App.css';
 import './Wizard.css';
-import ProfileMenu from './components/ProfileMenu';
 import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
 
@@ -14,6 +13,24 @@ const API_URL = 'http://localhost:5000';
 
 // Theme icon mapping
 const themeIcons = {
+  'captain-early-riser': GiAlarmClock,
+  'the-cheerleader-in-chief': FiZap,
+  'the-disciplinarian': FiAlertCircle,
+  'the-dreamer': GiNightSleep,
+  'the-economizer': FiDollarSign,
+  'the-emotional-responder': FiHeart,
+  'the-fashion-police-': FiEye,
+  'the-fix-it-fairy': FiTool,
+  'the-human-alarm': GiAlarmClock,
+  'the-lie-detector': FiSearch,
+  'the-never-rest': FiRefreshCw,
+  'the-noise-rader': FiVolume2,
+  'the-nourisher-': GiCook,
+  'the-prayer-warrior-': FiSun,
+  'the-prophet': FiActivity,
+  'the-safe-place': FiHome,
+  'the-silent-sacrificer': FiHeart,
+  // Fallbacks
   'time-champion': GiAlarmClock,
   'multi-tasker': GiJuggler,
   'masterchef': GiCook,
@@ -62,14 +79,23 @@ function AppContent() {
   const [uploadedImage, setUploadedImage] = useState(null);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [resultImage, setResultImage] = useState(null);
+  const [resultBlobUrl, setResultBlobUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [error, setError] = useState('');
   const [currentStep, setCurrentStep] = useState(1);
-  const [viewState, setViewState] = useState('landing'); // 'landing', 'login', 'wizard'
+  const [viewState, setViewState] = useState('landing');
   const [userEmail, setUserEmail] = useState('');
 
-  // Navigation Handlers
+  // NEW: Write Her Story state
+  const [momStory, setMomStory] = useState('');
+
+  // NEW: Share Modal state
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [sharePhone, setSharePhone] = useState('');
+  const [shareEmail, setShareEmail] = useState('');
+
+  // Navigation
   const handleStartData = () => {
     setViewState('login');
     window.scrollTo(0, 0);
@@ -93,28 +119,22 @@ function AppContent() {
   // Fetch themes
   const fetchThemes = useCallback(async () => {
     try {
-      console.log('Fetching themes from:', `${API_URL}/api/themes`);
       const response = await axios.get(`${API_URL}/api/themes`);
-      console.log('Themes response:', response.data);
       if (response.data.success) {
         setThemes(response.data.themes);
         setError('');
       } else {
-        console.error('Theme fetch failed success:false');
         setError('Failed to load themes data.');
       }
     } catch (err) {
-      console.error('Failed to fetch themes:', err);
-      // More friendly error message
       if (err.code === 'ERR_NETWORK') {
-         setError('Cannot connect to server (Port 5000). Please ensure backend is running.');
+         setError('Cannot connect to server. Please ensure backend is running on port 5000.');
       } else {
          setError('Failed to load themes. Try refreshing.');
       }
     }
   }, []);
 
-  // Fetch themes on mount
   useEffect(() => {
     fetchThemes();
   }, [fetchThemes]);
@@ -126,14 +146,12 @@ function AppContent() {
 
     setError('');
     
-    // Preview
     const reader = new FileReader();
     reader.onload = () => {
       setUploadedImage(reader.result);
     };
     reader.readAsDataURL(file);
 
-    // Upload to server
     const formData = new FormData();
     formData.append('image', file);
 
@@ -144,12 +162,8 @@ function AppContent() {
 
       if (response.data.success) {
         setUploadedFile(response.data.file);
-        // Do NOT advance to step 3 automatically, let user click "Generate"
-        // setCurrentStep(3); 
-        console.log('Image uploaded success:', response.data.file);
       }
     } catch (err) {
-      console.error('Upload failed:', err);
       setError('Failed to upload image. Please try again.');
       setUploadedImage(null);
     }
@@ -161,18 +175,22 @@ function AppContent() {
       'image/*': ['.jpeg', '.jpg', '.png', '.webp']
     },
     maxFiles: 1,
-    maxSize: 10 * 1024 * 1024 // 10MB
+    maxSize: 10 * 1024 * 1024
   });
 
   // Select theme
   const handleThemeSelect = (theme) => {
     setSelectedTheme(theme);
-    setCurrentStep(2);
     setResultImage(null);
     setError('');
   };
 
-  // Generate face swap
+  // Word count helper
+  const getWordCount = (text) => {
+    return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+  };
+
+  // Generate face swap — called from Step 3 (Write Story) now
   const handleGenerate = async () => {
     if (!selectedTheme || !uploadedFile) {
       setError('Please select a theme and upload an image.');
@@ -180,37 +198,31 @@ function AppContent() {
     }
 
     setIsLoading(true);
-    setCurrentStep(3); // Explicitly move to Loading Screen
+    setCurrentStep(4); // Loading step
     setLoadingMessage('Preparing your superhero transformation...');
     setError('');
 
     try {
       setLoadingMessage('Working magic with AI face swap...');
       
-      // Set a client-side timeout (e.g., 50 seconds) to prevent infinite UI loading
-      console.log('Sending request to backend:', `${API_URL}/api/face-swap`);
       const response = await axios.post(`${API_URL}/api/face-swap`, {
         sourceImage: uploadedFile.path,
-        themeId: selectedTheme.id
-      }, { timeout: 50000 }); // 50s timeout
-      console.log('Backend response:', response.data);
+        themeId: selectedTheme.id,
+        story: momStory // send story along
+      }, { timeout: 120000 });
 
       if (response.data.success) {
         setResultImage(`${API_URL}${response.data.result.imageUrl}`);
-        setCurrentStep(4);
-        if (response.data.demo) {
-          // It's not really an error, just a fallback notice
-          console.warn('Using fallback:', response.data.note);
-        }
+        setResultBlobUrl(response.data.result.blobUrl || '');
+        setCurrentStep(5); // Result step
       }
     } catch (err) {
-      console.error('Face swap failed:', err);
-      // If client-side timeout or server error
       if (err.code === 'ECONNABORTED') {
         setError('The grid is busy. Please try again in a moment. (Timeout)');
       } else {
         setError(err.response?.data?.message || 'Face swap failed. Please try again.');
       }
+      setCurrentStep(3); // Back to story step on error
     } finally {
       setIsLoading(false);
       setLoadingMessage('');
@@ -222,7 +234,6 @@ function AppContent() {
     if (!resultImage) return;
     
     try {
-      // Fetch the image as a blob to force download, overcoming cross-origin issues
       const response = await fetch(resultImage);
       const blob = await response.blob();
       
@@ -232,12 +243,8 @@ function AppContent() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      // Clean up object URL
       window.URL.revokeObjectURL(link.href);
     } catch (err) {
-      console.error('Download failed:', err);
-      // Fallback to simple link
       const link = document.createElement('a');
       link.href = resultImage;
       link.target = '_blank';
@@ -248,321 +255,444 @@ function AppContent() {
     }
   };
 
-  // Reset to start
+  // Share handler
+  const handleShareSubmit = async () => {
+    // Determine which URL to share (prefer public Blob URL, fallback to local)
+    const urlToShare = resultBlobUrl || resultImage;
+
+    try {
+      // 1. Share via SMS (required)
+      await axios.post(`${API_URL}/api/share`, {
+        channel: 'phone',
+        identifier: sharePhone,
+        imageUrl: urlToShare
+      });
+
+      // 2. Share via Email (optional)
+      if (shareEmail) {
+        await axios.post(`${API_URL}/api/share`, {
+          channel: 'email',
+          identifier: shareEmail,
+          imageUrl: urlToShare
+        });
+      }
+
+      alert(`Shared successfully! Link sent to ${sharePhone}${shareEmail ? ' and ' + shareEmail : ''}`);
+      setShowShareModal(false);
+      setSharePhone('');
+      setShareEmail('');
+    } catch (err) {
+      console.error('Share error:', err);
+      alert('Failed to share. Please try again.');
+    }
+  };
+
+  // Reset
   const handleReset = () => {
     setSelectedTheme(null);
     setUploadedImage(null);
     setUploadedFile(null);
     setResultImage(null);
+    setResultBlobUrl('');
     setError('');
     setCurrentStep(1);
     setIsLoading(false);
+    setMomStory('');
+    setShowShareModal(false);
   };
 
-  // Generate floating hearts
-  const generateHearts = () => {
-    return Array.from({ length: 15 }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      animationDelay: Math.random() * 15,
-      size: 15 + Math.random() * 20
-    }));
-  };
-
-  const hearts = generateHearts();
-
-  // Conditional Rendering Logic
+  // Conditional Rendering
   if (viewState === 'login') {
-    return (
-        <div className="app">
-             <div className="animated-bg" />
-             <div className="hearts-container">
-            {hearts.map(heart => (
-            <span
-                key={heart.id}
-                className="heart"
-                style={{
-                left: `${heart.left}%`,
-                animationDelay: `${heart.animationDelay}s`,
-                fontSize: `${heart.size}px`
-                }}
-            >
-                ❤️
-            </span>
-            ))}
-        </div>
-            <LoginPage onBack={handleBackToLanding} onLogin={handleLoginSuccess} />
-        </div>
-    );
+    return <LoginPage onBack={handleBackToLanding} onLogin={handleLoginSuccess} />;
   }
 
   if (viewState === 'landing') {
-      return (
-        <div className="app">
-           {/* Landing Page does not have the animated BG on top necessarily, or it has its own style. 
-               The original code had it globally. Keeping it consistent. */}
-          <div className="animated-bg" />
-          <div className="hearts-container">
-            {hearts.map(heart => (
-            <span
-                key={heart.id}
-                className="heart"
-                style={{
-                left: `${heart.left}%`,
-                animationDelay: `${heart.animationDelay}s`,
-                fontSize: `${heart.size}px`
-                }}
-            >
-                ❤️
-            </span>
-            ))}
-        </div>
-        <main className="main">
-          <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 1000 }}>
-               <ProfileMenu 
-                userImage={uploadedImage} 
-                onHome={handleGoHome} 
-                onCreate={handleStartData} 
-                onLogout={() => window.location.reload()} 
-              />
-          </div>
+    return (
+      <div className="app" style={{ background: 'transparent' }}>
+        <main className="main" style={{ width: '100%', height: '100%' }}>
           <LandingPage onStart={handleStartData} />
         </main>
-        
-        </div>
-      );
+      </div>
+    );
   }
 
   // WIZARD VIEW
+  // Updated: 5 steps now
+  const stepLabels = ['Upload Photo', 'Select Theme', 'Write Her Story', 'Generating', 'Result'];
+  
+  // Handle back navigation per step
+  const handleBack = () => {
+    if (currentStep === 1) {
+      handleGoHome();
+    } else if (currentStep <= 3) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
   return (
     <div className="app-wizard">
+      {/* ---- Wizard Header ---- */}
       <header className="wizard-header">
-         <ProfileMenu 
-            userImage={uploadedImage} 
-            onHome={handleGoHome} 
-            onCreate={handleReset} 
-            onLogout={() => window.location.reload()} 
-          />
+        <button className="wizard-back-btn" onClick={handleBack}>
+          <FiArrowLeft /> Back
+        </button>
         <div className="kelloggs-logo">Kellogg's</div>
+        <div className="wizard-step-indicator">
+          <span className="wizard-step-badge">{currentStep}</span>
+          <span>{stepLabels[currentStep - 1]}</span>
+          <div className="wizard-user-avatar">
+            {uploadedImage ? (
+              <img src={uploadedImage} alt="User" />
+            ) : (
+              <span>👤</span>
+            )}
+          </div>
+        </div>
       </header>
 
-      {/* Progress Steps */}
-      <div className="steps-progress">
-        <div className={`step-item ${currentStep >= 1 ? 'active' : ''}`}>
-          <div className="step-circle">1</div>
-          <span>Select Theme</span>
-        </div>
-        <div className={`step-item ${currentStep >= 2 ? 'active' : ''}`}>
-          <div className="step-circle">2</div>
-          <span>Upload</span>
-        </div>
-        <div className={`step-item ${currentStep >= 3 ? 'active' : ''}`}>
-          <div className="step-circle">3</div>
-          <span>Generate</span>
-        </div>
-        <div className={`step-item ${currentStep >= 4 ? 'active' : ''}`}>
-          <div className="step-circle">4</div>
-          <span>Result</span>
-        </div>
-      </div>
+      {/* Floating decorations */}
+      <span className="wizard-star" style={{ top: '120px', left: '30px', fontSize: '1.2rem', color: '#FFC700' }}>⭐</span>
+      <span className="wizard-star" style={{ bottom: '60px', left: '40px', fontSize: '0.9rem', color: '#4FC3F7' }}>⭐</span>
+      <span className="wizard-star" style={{ top: '200px', right: '40px', fontSize: '1.4rem', color: '#FF69B4' }}>★</span>
+      <span className="wizard-star" style={{ bottom: '80px', right: '30px', fontSize: '1.1rem', color: '#FFC700' }}>⭐</span>
 
       <div className="wizard-card">
         <AnimatePresence mode='wait'>
           
-          {/* STEP 1: SELECT THEME */}
+          {/* STEP 1: UPLOAD PHOTO */}
           {currentStep === 1 && (
             <motion.div
-              key="step1"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
+              key="step1-upload"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
             >
-              <h2 style={{ fontSize: '2rem', marginBottom: '1rem', color: '#E41E26' }}>Choose Your Mom's Superpower</h2>
-              <p style={{ color: '#666', marginBottom: '2rem' }}>Select the theme that best fits her personality!</p>
+              <h2 className="upload-page-title">Upload Your Mother's Photo</h2>
+              <p className="upload-page-subtitle">Choose a clear, front-facing image for best results</p>
+
+              {error && (
+                <div style={{ color: '#F60945', marginBottom: '1rem', padding: '12px 16px', background: '#FFF0F3', borderRadius: '12px', fontSize: '0.9rem' }}>
+                  {error}
+                </div>
+              )}
+
+              <div 
+                {...getRootProps()} 
+                className={`upload-zone ${isDragActive ? 'drag-active' : ''}`}
+              >
+                <input {...getInputProps()} />
+                {uploadedImage ? (
+                  <div className="upload-preview-container">
+                    <img 
+                      src={uploadedImage} 
+                      alt="Preview" 
+                    />
+                    <p className="upload-change-text">Click to change photo</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="upload-zone-icon">⬆️</div>
+                    <h3 className="upload-zone-title">Drag & Drop Your Photo Here</h3>
+                    <p className="upload-zone-subtitle">or click to browse from your device</p>
+                    <div className="upload-zone-formats">
+                      🖼️ JPG, PNG supported
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="tips-card">
+                <div className="tips-card-title">🖼️ Tips for best results:</div>
+                <ul>
+                  <li>Use a clear, well-lit photo</li>
+                  <li>Face should be visible and front-facing</li>
+                  <li>Higher resolution images work better</li>
+                  <li>Avoid group photos or busy backgrounds</li>
+                </ul>
+              </div>
+
+              {uploadedFile && (
+                <div style={{ marginTop: '28px' }}>
+                  <button 
+                    className="btn-kelloggs"
+                    onClick={() => setCurrentStep(2)}
+                  >
+                    Next: Select Theme <FiCheck />
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* STEP 2: SELECT THEME */}
+          {currentStep === 2 && (
+            <motion.div
+              key="step2-theme"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <h2 className="upload-page-title">Choose Your <span className="title-red">Superhero Persona</span></h2>
+              <p className="upload-page-subtitle">Select the superpower that best describes your mom</p>
               
               {error && (
-                <div style={{ color: 'red', marginBottom: '1rem', padding: '1rem', background: '#ffe6e6', borderRadius: '8px' }}>
+                <div style={{ color: '#F60945', marginBottom: '1rem', padding: '12px 16px', background: '#FFF0F3', borderRadius: '12px', fontSize: '0.9rem' }}>
                   {error} <br/>
-                  <button onClick={fetchThemes} style={{ marginTop: '0.5rem', textDecoration: 'underline', border: 'none', background: 'transparent', cursor: 'pointer' }}>Retry</button>
+                  <button onClick={fetchThemes} style={{ marginTop: '0.5rem', textDecoration: 'underline', border: 'none', background: 'transparent', cursor: 'pointer', color: '#F60945' }}>Retry</button>
                 </div>
               )}
 
               {themes.length === 0 && !error && (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>
                   <p>Loading themes...</p>
-                  <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>If this takes too long, please check if the backend server is running on port 5000.</p>
                 </div>
               )}
 
               <div className="theme-grid">
-                {console.log('Rendering themes:', themes)}
                 {themes.map((theme) => {
                   const IconComponent = themeIcons[theme.id] || GiAlarmClock;
                   return (
                     <div 
                       key={theme.id}
                       className={`theme-option ${selectedTheme?.id === theme.id ? 'selected' : ''}`}
-                      onClick={() => setSelectedTheme(theme)}
+                      onClick={() => handleThemeSelect(theme)}
                     >
                       <IconComponent className="theme-icon-lg" />
-                      <h3 style={{ marginBottom: '0.5rem', fontWeight: '800' }}>{theme.title}</h3>
-                      <p style={{ fontSize: '0.9rem', color: '#888' }}>{theme.subtitle}</p>
+                      <h3 style={{ marginBottom: '0.5rem', fontWeight: '800', fontFamily: 'Poppins, sans-serif' }}>{theme.title}</h3>
+                      <p style={{ fontSize: '0.88rem', color: '#888' }}>{theme.subtitle}</p>
                     </div>
                   );
                 })}
               </div>
 
-              <div style={{ marginTop: '3rem' }}>
+              <div style={{ marginTop: '2rem', display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button className="btn-kelloggs secondary" onClick={() => setCurrentStep(1)}>
+                  <FiArrowLeft /> Back
+                </button>
                 <button 
                   className="btn-kelloggs"
                   disabled={!selectedTheme}
-                  style={{ opacity: selectedTheme ? 1 : 0.5 }}
-                  onClick={() => setCurrentStep(2)}
+                  onClick={() => setCurrentStep(3)}
                 >
-                  Next Step <FiCheck />
+                  Next: Write Her Story <FiCheck />
                 </button>
               </div>
             </motion.div>
           )}
 
-          {/* STEP 2: UPLOAD PHOTO */}
-          {currentStep === 2 && (
-            <motion.div
-              key="step2"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-            >
-              <h2 style={{ fontSize: '2rem', marginBottom: '1rem', color: '#E41E26' }}>Upload Her Photo</h2>
-              <p style={{ color: '#666', marginBottom: '2rem' }}>Upload a clear, front-facing photo for the best superhero transformation.</p>
-
-              <div 
-                {...getRootProps()} 
-                className={`upload-zone ${isDragActive ? 'drag-active' : ''}`}
-                style={{ position: 'relative' }}
-              >
-                <input {...getInputProps()} />
-                {uploadedImage ? (
-                  <div style={{ position: 'relative', display: 'inline-block' }}>
-                    <img 
-                      src={uploadedImage} 
-                      alt="Preview" 
-                      style={{ maxWidth: '300px', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} 
-                    />
-                    <div style={{ marginTop: '1rem', color: '#888', fontStyle: 'italic' }}>
-                      Click to change photo
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <FiUpload size={50} color="#E41E26" style={{ marginBottom: '1rem' }} />
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Drag & drop or Click to Upload</h3>
-                    <p style={{ fontSize: '0.9rem', color: '#aaa' }}>Supports JPG, PNG (Max 10MB)</p>
-                  </>
-                )}
-              </div>
-
-              <div style={{ marginTop: '3rem', display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                <button className="btn-kelloggs secondary" onClick={() => setCurrentStep(1)}>
-                  Back
-                </button>
-                <button 
-                  className="btn-kelloggs"
-                  disabled={!uploadedFile}
-                  style={{ opacity: uploadedFile ? 1 : 0.5 }}
-                  onClick={handleGenerate}
-                >
-                  Generate Superhero <FiZap />
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* STEP 3: LOADING / GENERATE */}
+          {/* STEP 3: WRITE HER STORY (NEW) */}
           {currentStep === 3 && (
             <motion.div
-              key="step3"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="loading-container"
+              key="step3-story"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
             >
-              <motion.div 
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                style={{ display: 'inline-block', marginBottom: '2rem' }}
-              >
-                <FiZap size={60} color="#F7C600" />
-              </motion.div>
-              
-              <h2 style={{ color: '#E41E26', marginBottom: '1rem' }}>Creating your Super Mom...</h2>
-              <p style={{ fontSize: '1.2rem', color: '#4A2C2A' }}>{loadingMessage || "Adding super strength 💪"}</p>
-              
-              <div className="progress-bar-container">
-                <motion.div 
-                  className="progress-bar-fill"
-                  initial={{ width: "0%" }}
-                  animate={{ width: "100%" }}
-                  transition={{ duration: 3.5 }}
-                />
-              </div>
+              <div className="story-step">
+                <div className="story-icon">✨</div>
+                <h2 className="upload-page-title">Tell Us About <span className="title-red">Your Mom</span></h2>
+                <p className="upload-page-subtitle">Share what makes her special in 150 words or less</p>
 
-              <div style={{ marginTop: '2rem', fontStyle: 'italic', color: '#aaa', fontSize: '0.9rem' }}>
-                Please wait while our AI works its magic!
+                {error && (
+                  <div style={{ color: '#F60945', marginBottom: '1rem', padding: '12px 16px', background: '#FFF0F3', borderRadius: '12px', fontSize: '0.9rem' }}>
+                    {error}
+                  </div>
+                )}
+
+                <div className="story-textarea-wrapper">
+                  <textarea
+                    className="story-textarea"
+                    placeholder="Write about your mom... What makes her special? Share her superpowers, her love, her sacrifices, or a favorite memory. Let the world know why she's your hero!"
+                    value={momStory}
+                    onChange={(e) => {
+                      const words = e.target.value.trim().split(/\s+/);
+                      if (e.target.value.trim() === '' || words.length <= 150) {
+                        setMomStory(e.target.value);
+                      }
+                    }}
+                    rows={6}
+                  />
+                  <div className="story-word-count">
+                    {getWordCount(momStory)} / 150 words
+                  </div>
+                </div>
+
+                <p className="story-helper-text">
+                  ✏️ {getWordCount(momStory) === 0 ? 'Start writing to see your word count' : `${getWordCount(momStory)} word${getWordCount(momStory) !== 1 ? 's' : ''} written`}
+                </p>
+
+                {/* Writing Tips */}
+                <div className="writing-tips-card">
+                  <div className="writing-tips-title">💡 Writing Tips</div>
+                  <ul>
+                    <li>Share a <strong>special memory</strong> or moment that shows her love</li>
+                    <li>Describe her unique <strong>superpowers</strong> (cooking, advice, humor, etc.)</li>
+                    <li>Express what she <strong>means to you</strong> and your family</li>
+                    <li>Keep it heartfelt and genuine - <strong>authenticity matters!</strong></li>
+                  </ul>
+                </div>
+
+                <div style={{ marginTop: '28px', textAlign: 'center' }}>
+                  <button 
+                    className="btn-kelloggs"
+                    disabled={getWordCount(momStory) < 1}
+                    onClick={handleGenerate}
+                  >
+                    Continue to Generate <FiZap />
+                  </button>
+                  {getWordCount(momStory) < 1 && (
+                    <p style={{ color: '#F60945', fontSize: '0.85rem', marginTop: '8px' }}>
+                      Please write at least 1 word to continue
+                    </p>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}
 
-          {/* STEP 4: RESULT */}
-          {currentStep === 4 && resultImage && (
+          {/* STEP 4: LOADING / GENERATING */}
+          {currentStep === 4 && (
             <motion.div
-              key="step4"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              key="step4-loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              style={{ position: 'fixed', inset: 0, zIndex: 100 }}
             >
-              <h2 style={{ fontSize: '2.5rem', color: '#E41E26', marginBottom: '0.5rem' }}>Your Super Mom is Ready!</h2>
-              <p style={{ color: '#666', marginBottom: '2rem' }}>She looks absolutely strong and amazing.</p>
-
-              <div style={{ 
-                display: 'flex', 
-                gap: '2rem', 
-                justifyContent: 'center', 
-                flexWrap: 'wrap', 
-                marginBottom: '3rem' 
-              }}>
-                <div style={{ flex: 1, minWidth: '300px', maxWidth: '400px' }}>
-                  <div style={{ background: '#FFF6E5', padding: '1rem', borderRadius: '16px', height: '100%' }}>
-                    <h4 style={{ marginBottom: '1rem', color: '#4A2C2A' }}>Original Photo</h4>
-                    <img 
-                      src={uploadedImage} 
-                      alt="Original" 
-                      style={{ width: '100%', borderRadius: '12px', objectFit: 'cover' }} 
-                    />
-                  </div>
+              <div className="loading-view">
+                <div className="loading-header">
+                  <div className="kelloggs-logo">Kellogg's</div>
                 </div>
-                
-                <div style={{ flex: 1, minWidth: '300px', maxWidth: '400px' }}>
-                  <div style={{ background: '#FFF6E5', padding: '1rem', borderRadius: '16px', height: '100%', border: '2px solid #F7C600' }}>
-                    <h4 style={{ marginBottom: '1rem', color: '#E41E26' }}>Superhero Version 🦸‍♀️</h4>
-                    <img 
-                      src={resultImage} 
-                      alt="Superhero Result" 
-                      style={{ width: '100%', borderRadius: '12px', objectFit: 'cover', boxShadow: '0 10px 30px rgba(228, 30, 38, 0.2)' }} 
-                    />
+
+                <span className="loading-sparkle" style={{ top: '15%', left: '12%', fontSize: '1.2rem', color: '#FFC700' }}>✦</span>
+                <span className="loading-sparkle" style={{ top: '25%', right: '15%', fontSize: '1.5rem', color: '#FFD700', animationDelay: '1s' }}>✦</span>
+                <span className="loading-sparkle" style={{ bottom: '20%', left: '8%', fontSize: '1rem', color: '#FFC700', animationDelay: '2s' }}>✦</span>
+                <span className="loading-sparkle" style={{ bottom: '15%', right: '10%', fontSize: '1.3rem', color: '#FFD700', animationDelay: '0.5s' }}>✦</span>
+
+                <div className="loading-wrapper">
+                  <div className="loading-card">
+                    <div className="loading-icon">
+                      <motion.span
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                        style={{ display: 'inline-block' }}
+                      >
+                        ✦
+                      </motion.span>
+                    </div>
+
+                    <h2 className="loading-title">Creating Your Super Mom</h2>
+                    <p className="loading-subtitle">💪 {loadingMessage || 'Adding super strength'}</p>
+
+                    <div className="loading-progress-row">
+                      <span className="loading-progress-label">Progress</span>
+                    </div>
+                    <div className="loading-progress-bar">
+                      <motion.div 
+                        className="loading-progress-fill"
+                        initial={{ width: "0%" }}
+                        animate={{ width: "100%" }}
+                        transition={{ duration: 3.5 }}
+                      />
+                    </div>
+
+                    {selectedTheme && (
+                      <div className="loading-theme-card">
+                        <div className="loading-theme-title">{selectedTheme.title}</div>
+                        <div className="loading-theme-subtitle">{selectedTheme.subtitle}</div>
+                      </div>
+                    )}
+
+                    <div className="loading-dots">
+                      <span className="loading-dot"></span>
+                      <span className="loading-dot"></span>
+                      <span className="loading-dot active"></span>
+                    </div>
                   </div>
                 </div>
               </div>
+            </motion.div>
+          )}
 
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button className="btn-kelloggs" onClick={handleDownload} style={{ fontSize: '1rem' }}>
-                  Download Image <FiDownload />
-                </button>
-                <button className="btn-kelloggs secondary" onClick={handleReset}>
-                  Try Another Photo <FiRefreshCw />
-                </button>
-              </div>
+          {/* STEP 5: RESULT */}
+          {currentStep === 5 && resultImage && (
+            <motion.div
+              key="step5-result"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="result-page">
+                <h2 className="result-title">Meet Your <span className="title-red">Super Mom</span>!</h2>
+                <p className="result-subtitle">Here's your AI-generated superhero transformation</p>
 
-              <div style={{ marginTop: '2rem', color: '#E41E26', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                <FiHeart fill="#E41E26" /> Share the love with #KelloggsSuperMom
+                {/* Theme info banner */}
+                {selectedTheme && (
+                  <div className="result-theme-banner">
+                    <div className="result-theme-icon">
+                      {(() => {
+                        const IconComponent = themeIcons[selectedTheme.id] || GiAlarmClock;
+                        return <IconComponent size={28} color="#F60945" />;
+                      })()}
+                    </div>
+                    <div className="result-theme-name">{selectedTheme.title}</div>
+                    <div className="result-theme-desc">{selectedTheme.subtitle}</div>
+                  </div>
+                )}
+
+                {/* Side-by-side photos */}
+                <div className="result-photos">
+                  <div className="result-photo-card">
+                    <div className="result-photo-label original">Original Photo</div>
+                    <img src={uploadedImage} alt="Original" />
+                  </div>
+                  <div className="result-photo-card">
+                    <div className="result-photo-label ai-generated">AI - Generated</div>
+                    <img src={resultImage} alt="Superhero Result" />
+                  </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="result-buttons">
+                  <button className="result-btn primary" onClick={handleDownload}>
+                    <FiDownload size={14} /> DOWNLOAD IMAGE
+                  </button>
+                  <button className="result-btn" onClick={() => setShowShareModal(true)}>
+                    <FiShare2 size={14} /> SHARE
+                  </button>
+                  <button className="result-btn" onClick={handleReset}>
+                    <FiRefreshCw size={14} /> TRY ANOTHER PHOTO
+                  </button>
+                </div>
+
+                {/* Superhero Features */}
+                <div className="result-features">
+                  <h3 className="result-features-title">Superhero Features Added</h3>
+                  <div className="result-features-grid">
+                    <div className="result-feature-item">
+                      <div className="result-feature-icon">🦸</div>
+                      <div className="result-feature-name">Hero Costume</div>
+                      <div className="result-feature-desc">Bold colors and iconic superhero outfit</div>
+                    </div>
+                    <div className="result-feature-item">
+                      <div className="result-feature-icon">💪</div>
+                      <div className="result-feature-name">Dynamic Pose</div>
+                      <div className="result-feature-desc">Confident, powerful superhero stance</div>
+                    </div>
+                    <div className="result-feature-item">
+                      <div className="result-feature-icon">✨</div>
+                      <div className="result-feature-name">Cape & Details</div>
+                      <div className="result-feature-desc">Flowing cape and heroic accessories</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CTA */}
+                <div className="result-cta">
+                  <h3 className="result-cta-title">Love the result? Create more!</h3>
+                  <p className="result-cta-desc">Transform more photos and share the superhero magic with family</p>
+                  <button className="result-cta-btn" onClick={handleReset}>
+                    CREATE ANOTHER SUPER MOM
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}
@@ -570,24 +700,85 @@ function AppContent() {
         </AnimatePresence>
       </div>
 
-       {/* Chocos Decoration */}
-       <img 
-         src="https://png.pngtree.com/png-vector/20230906/ourmid/pngtree-chocolate-cereal-balls-png-image_9997972.png" 
-         alt="Chocos" 
-         className="chocos-float" 
-         style={{ bottom: '20px', left: '20px', transform: 'rotate(-20deg)' }} 
-       />
-       <img 
-         src="https://png.pngtree.com/png-vector/20230906/ourmid/pngtree-chocolate-cereal-balls-png-image_9997972.png" 
-         alt="Chocos" 
-         className="chocos-float" 
-         style={{ top: '100px', right: '20px', width: '80px', transform: 'rotate(45deg)' }} 
-       />
+      {/* ===== SHARE MODAL ===== */}
+      <AnimatePresence>
+        {showShareModal && (
+          <motion.div
+            className="share-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowShareModal(false)}
+          >
+            <motion.div
+              className="share-modal"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button className="share-modal-close" onClick={() => setShowShareModal(false)}>
+                <FiX size={20} />
+              </button>
 
-      <footer className="footer" style={{ marginTop: '4rem', background: 'transparent' }}>
-        <div className="container" style={{ color: '#4A2C2A' }}>
-          <p>Made with ❤️ for Mother's Day • Kellogg's {new Date().getFullYear()}</p>
-        </div>
+              <div className="share-modal-icon">🔗</div>
+              <h3 className="share-modal-title">Share Your Image</h3>
+              <p className="share-modal-subtitle">Please provide your phone number to continue</p>
+
+              <div className="share-form">
+                <div className="share-input-group">
+                  <label><FiPhone size={14} /> Phone Number <span style={{ color: '#F60945' }}>*</span></label>
+                  <input
+                    type="tel"
+                    placeholder="+1 (555) 000-0000"
+                    value={sharePhone}
+                    onChange={(e) => setSharePhone(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="share-input-group">
+                  <label><FiMail size={14} /> Email Address <span style={{ color: '#888', fontWeight: 400 }}>(Optional)</span></label>
+                  <input
+                    type="email"
+                    placeholder="your@email.com"
+                    value={shareEmail}
+                    onChange={(e) => setShareEmail(e.target.value)}
+                  />
+                </div>
+
+                <button 
+                  className="share-submit-btn"
+                  onClick={handleShareSubmit}
+                  disabled={!sharePhone}
+                >
+                  Get Share Link via SMS/Email
+                </button>
+
+                <div style={{ marginTop: '1rem', borderTop: '1px solid #eee', paddingTop: '1rem', textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '10px' }}>Or share directly:</p>
+                    <a
+                      href={`https://wa.me/?text=${encodeURIComponent(`Check out my Kellogg's Super Mom transformation! ${resultBlobUrl || resultImage}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="share-submit-btn"
+                      style={{ background: '#25D366', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', textDecoration: 'none' }}
+                    >
+                      Share on WhatsApp
+                    </a>
+                </div>
+
+                <p className="share-disclaimer">
+                  🔒 Your information is safe and will only be used for this service
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <footer className="wizard-footer">
+        <p>Made with ❤️ for Mother's Day • Kellogg's {new Date().getFullYear()}</p>
       </footer>
     </div>
   );

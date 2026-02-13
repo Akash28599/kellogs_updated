@@ -40,11 +40,11 @@
 
   0%,
   100% {
-    box-shadow: 0 0 20px var(--theme-color, rgba(227, 25, 55, 0.4));
+    box-shadow: 0 0 20px var(--theme-color, rgba(246, 9, 69, 0.4));
   }
 
   50% {
-    box-shadow: 0 0 40px var(--theme-color, rgba(227, 25, 55, 0.6));
+    box-shadow: 0 0 40px var(--theme-color, rgba(246, 9, 69, 0.6));
   }
 }
 
@@ -113,14 +113,14 @@
   right: -8px;
   bottom: -8px;
   border: 3px solid transparent;
-  border-top-color: #E31937;
+  border-top-color: #F60945;
   border-radius: 50%;
   animation: spin 1.5s linear infinite reverse;
 }
 
 /* Hearts animation enhancement */
 .heart {
-  filter: drop-shadow(0 0 8px rgba(227, 25, 55, 0.5));
+  filter: drop-shadow(0 0 8px rgba(246, 9, 69, 0.5));
 }
 
 /* Step indicator enhancements */
@@ -234,7 +234,8 @@
   color: white;
 }
 
-.profile-button:hover, .profile-button.active {
+.profile-button:hover,
+.profile-button.active {
   background: rgba(255, 255, 255, 0.2);
   border-color: var(--kelloggs-gold);
 }
@@ -282,7 +283,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 0.5rem;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(20px);
   overflow: hidden;
   transform-origin: top right;
@@ -311,7 +312,7 @@
 }
 
 .dropdown-item.danger:hover {
-  background: rgba(227, 25, 55, 0.1);
+  background: rgba(246, 9, 69, 0.1);
 }
 
 .dropdown-divider {
@@ -325,7 +326,7 @@
     top: 1rem;
     right: 1rem;
   }
-  
+
   .profile-dropdown {
     width: 200px;
   }

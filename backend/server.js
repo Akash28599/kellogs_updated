@@ -6,10 +6,154 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { spawn } = require('child_process');
-require('dotenv').config();
+// Manual .env load
+const dotenv = require('dotenv');
+const dotenvPath = path.join(__dirname, '.env');
+if (fs.existsSync(dotenvPath)) {
+  try {
+    // ROBUST .ENV LOADER (Handles UTF-16 LE BOM)
+    let envContentBuffer = fs.readFileSync(dotenvPath);
+    let envContent = '';
+
+    // Detect UTF-16 LE (FF FE)
+    if (envContentBuffer.length >= 2 && envContentBuffer[0] === 0xFF && envContentBuffer[1] === 0xFE) {
+      envContent = envContentBuffer.toString('ucs2');
+      console.log('📝 Detected UTF-16 LE encoding for .env');
+    } else {
+      envContent = envContentBuffer.toString('utf8');
+    }
+
+    // Remove BOM character if present
+    if (envContent.charCodeAt(0) === 0xFEFF) {
+      envContent = envContent.slice(1);
+    }
+
+    const envConfig = dotenv.parse(envContent);
+    for (const k in envConfig) {
+      process.env[k] = envConfig[k];
+    }
+    console.log(`✅ Loaded .env manually (${Object.keys(envConfig).length} keys found)`);
+
+    if (!process.env.SMTP_USER) {
+      console.warn('⚠️ SMTP_USER missing after load. Check .env file format.');
+    }
+
+  } catch (err) {
+    console.error('Error parsing .env:', err);
+  }
+} else {
+  console.log('⚠️ .env file not found:', dotenvPath);
+}
+const nodemailer = require('nodemailer');
+const axios = require('axios');
+const { Pool } = require('pg');
+const { BlobServiceClient } = require('@azure/storage-blob');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+console.log('🔧 DB Config Check:', {
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  db: process.env.DB_NAME,
+  passLength: process.env.DB_PASS ? process.env.DB_PASS.length : 0
+});
+
+// ---- PostgreSQL Connection (Local Dev Hardcoded Fallback) ----
+const pool = new Pool({
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT) || 5432,
+  database: process.env.DB_NAME || 'postgres', // Default to 'postgres' system DB
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASS || 'Akashkk99@',
+});
+
+// ---- Azure Blob Storage Connection ----
+let blobContainerClient;
+try {
+  const AZURE_CONN_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
+
+  if (AZURE_CONN_STRING) {
+    const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_CONN_STRING);
+    const containerName = process.env.AZURE_STORAGE_CONTAINER || 'tgkmdaccontainer';
+    blobContainerClient = blobServiceClient.getContainerClient(containerName);
+    console.log(`✅ Azure Blob Storage connected (Container: ${containerName})`);
+  } else {
+    console.warn('⚠️ AZURE_STORAGE_CONNECTION_STRING missing. Blob upload disabled.');
+  }
+} catch (err) {
+  console.error('❌ Azure Blob Storage init error:', err.message);
+}
+
+// Auto-create tables on startup
+const initDB = async () => {
+  try {
+    console.log(`🔌 Connecting to DB: ${process.env.DB_NAME || 'postgres'} on ${process.env.DB_HOST || 'localhost'}...`);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        identifier VARCHAR(255) UNIQUE NOT NULL,
+        channel VARCHAR(20) NOT NULL DEFAULT 'email',
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    // ... rest of initDB ...
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS submissions (
+        id SERIAL PRIMARY KEY,
+        user_identifier VARCHAR(255) NOT NULL,
+        source_image_path VARCHAR(500),
+        theme_id VARCHAR(100),
+        theme_name VARCHAR(200),
+        mom_story TEXT,
+        result_image_path VARCHAR(500),
+        result_blob_url VARCHAR(1000),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    // Ensure column exists (migration for existing table)
+    try {
+      await pool.query('ALTER TABLE submissions ADD COLUMN result_blob_url VARCHAR(1000)');
+    } catch (e) {
+      if (e.code !== '42701') { // Ignore duplicate column error
+        console.log('Notice: Column result_blob_url check:', e.message);
+      }
+    }
+
+    console.log('✅ PostgreSQL connected & tables ready');
+  } catch (err) {
+    // Auto-create DB if missing (Error 3D000)
+    if (err.code === '3D000' || err.message.includes('does not exist')) {
+      const dbName = process.env.DB_NAME || 'mom';
+      console.log(`⚠️ Database "${dbName}" not found. Attempting to create...`);
+      try {
+        // Connect to postgres system db to create new db
+        const adminPool = new Pool({
+          host: process.env.DB_HOST || 'localhost',
+          port: parseInt(process.env.DB_PORT) || 5432,
+          user: process.env.DB_USER || 'postgres',
+          password: process.env.DB_PASS || 'Akashkk99@', // Fallback match
+          database: 'postgres'
+        });
+        await adminPool.query(`CREATE DATABASE "${dbName}"`);
+        await adminPool.end();
+        console.log(`✅ Database "${dbName}" created successfully. Retrying initialization...`);
+        return initDB(); // Retry
+      } catch (createErr) {
+        console.error('❌ Failed to auto-create database. Is "postgres" DB accessible?', createErr.message);
+      }
+    } else {
+      console.error('❌ PostgreSQL init error:', err.message);
+      console.log('   Server will continue without DB. Submissions will NOT be saved.');
+    }
+  }
+};
+
+initDB();
 
 // Middleware
 app.use(cors({
@@ -59,6 +203,256 @@ const upload = multer({
 
 // DYNAMIC THEME LOADER
 // Scan templates folder for images and generate themes on the fly
+// ------------------------------------------------------------------
+// AUTHENTICATION & OTP
+// ------------------------------------------------------------------
+
+// Simple in-memory store for OTPs (Production should use Redis/DB)
+const otpStore = new Map();
+
+// Helper: Generate 6-digit OTP
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+// Helper: Send SMS via Termii
+const sendTermiiSMS = async (phoneNumber, otp) => {
+  try {
+    const cleanPhone = phoneNumber.replace(/^\+/, ''); // Remove leading + if present
+    const data = {
+      to: cleanPhone,
+      from: "N-Alert", // Default generic sender ID for Termii
+      sms: `Your Kellogg's Super Mom verification code is: ${otp}. Valid for 10 minutes.`,
+      type: "plain",
+      channel: "dnd", // Use DND channel for better delivery in Nigeria
+      api_key: process.env.SMSAPI_APIKEY,
+    };
+
+    const response = await axios.post(`${process.env.SMSAPI_BASEURL}/api/sms/send`, data);
+    return response.data;
+  } catch (error) {
+    console.error('Termii SMS Error:', error.response ? error.response.data : error.message);
+    throw new Error('Failed to send SMS');
+  }
+};
+
+// Helper: Send Email via Azure SMTP
+const sendAzureEmail = async (email, otp) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT, // 587
+      secure: false, // true for 465, false for other ports
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+      tls: {
+        ciphers: 'SSLv3',
+        rejectUnauthorized: false
+      }
+    });
+
+    const mailOptions = {
+      from: `"Kellogg's Super Mom" <${process.env.SMTP_FROM}>`,
+      to: email,
+      subject: "Your Verification Code - Kellogg's Super Mom",
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+          <h2 style="color: #D31245;">Kellogg's Super Mom</h2>
+          <p>Hello,</p>
+          <p>Your verification code is:</p>
+          <h1 style="font-size: 32px; letter-spacing: 5px; color: #333;">${otp}</h1>
+          <p>This code is valid for 10 minutes.</p>
+          <p>If you didn't request this code, please ignore this email.</p>
+        </div>
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email sent: %s', info.messageId);
+    return info;
+  } catch (error) {
+    console.error('SMTP Email Error:', error);
+    throw new Error('Failed to send Email');
+  }
+};
+
+// Endpoint: Send OTP
+app.post('/api/auth/send-otp', async (req, res) => {
+  const { channel, identifier } = req.body; // channel: 'email' | 'phone', identifier: email or phone number
+
+  if (!identifier) {
+    return res.status(400).json({ success: false, message: 'Identifier (email or phone) is required' });
+  }
+
+  const otp = generateOTP();
+  const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes from now
+
+  // Store OTP
+  otpStore.set(identifier, { otp, expiresAt });
+  console.log(`Generated OTP for ${identifier}: ${otp}`); // For debugging
+
+  try {
+    if (channel === 'email') {
+      await sendAzureEmail(identifier, otp);
+    } else if (channel === 'phone') {
+      await sendTermiiSMS(identifier, otp);
+    } else {
+      return res.status(400).json({ success: false, message: 'Invalid channel' });
+    }
+
+    res.json({ success: true, message: `OTP sent to ${identifier}` });
+
+  } catch (error) {
+    console.error('Send OTP Error:', error);
+    res.status(500).json({ success: false, message: 'Failed to send verification code. Please try again.' });
+  }
+});
+
+// Helper: Send Generic SMS
+const sendGenericSMS = async (phoneNumber, message) => {
+  try {
+    const cleanPhone = phoneNumber.replace(/^\+/, '');
+    const data = {
+      to: cleanPhone,
+      from: "N-Alert", // Termii default
+      sms: message,
+      type: "plain",
+      channel: "dnd",
+      api_key: process.env.SMSAPI_APIKEY,
+    };
+    await axios.post(`${process.env.SMSAPI_BASEURL}/api/sms/send`, data);
+  } catch (error) {
+    console.error('Termii SMS Share Error:', error.response?.data || error.message);
+  }
+};
+
+// Helper: Send Generic Email
+const sendGenericEmail = async (email, subject, htmlContent) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT, // 587
+      secure: false, // true for 465, false for other ports
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+      tls: { ciphers: 'SSLv3', rejectUnauthorized: false }
+    });
+
+    await transporter.sendMail({
+      from: `"Kellogg's Super Mom" <${process.env.SMTP_FROM}>`,
+      to: email,
+      subject: subject,
+      html: htmlContent
+    });
+  } catch (error) {
+    console.error('SMTP Share Email Error:', error);
+  }
+};
+
+// ... (OTP helpers remain, or could refactor, but keeping separate for safety)
+
+// ...
+
+// Endpoint: Share Result
+app.post('/api/share', async (req, res) => {
+  const { channel, identifier, imageUrl } = req.body;
+
+  if (!identifier || !imageUrl) {
+    return res.status(400).json({ success: false, message: 'Missing identifier or image URL' });
+  }
+
+  const message = `Check out my Kellogg's Super Mom transformation! ${imageUrl}`;
+  const htmlMessage = `
+    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+      <h2 style="color: #D31245;">Your Super Mom Portrait is Ready!</h2>
+      <p>Click the link below to view and download your transformation:</p>
+      <p><a href="${imageUrl}" style="background: #D31245; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Image</a></p>
+      <p>Or copy this link: ${imageUrl}</p>
+    </div>
+  `;
+
+  try {
+    if (channel === 'phone') {
+      await sendGenericSMS(identifier, message);
+    } else if (channel === 'email') {
+      await sendGenericEmail(identifier, "Your Kellogg's Super Mom Portrait", htmlMessage);
+    }
+    res.json({ success: true, message: 'Shared successfully!' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to share.' });
+  }
+});
+
+// Endpoint: Verify OTP (existing)
+app.post('/api/auth/verify-otp', (req, res) => {
+  const { identifier, otp } = req.body;
+
+  if (!identifier || !otp) {
+    return res.status(400).json({ success: false, message: 'Identifier and OTP are required' });
+  }
+
+  const storedData = otpStore.get(identifier);
+
+  if (!storedData) {
+    return res.status(400).json({ success: false, message: 'No OTP requested for this identifier' });
+  }
+
+  if (Date.now() > storedData.expiresAt) {
+    otpStore.delete(identifier);
+    return res.status(400).json({ success: false, message: 'OTP has expired. Please request a new one.' });
+  }
+
+  if (storedData.otp === otp) {
+    // OTP matches!
+    otpStore.delete(identifier); // Clear used OTP
+    return res.json({ success: true, message: 'Login successful', token: 'mock-jwt-token-12345' });
+  } else {
+    return res.status(400).json({ success: false, message: 'Invalid OTP. Please check and try again.' });
+  }
+});
+
+
+// Endpoint: Google OAuth Login
+app.post('/api/auth/google', async (req, res) => {
+  const { credential } = req.body;
+
+  if (!credential) {
+    return res.status(400).json({ success: false, message: 'Google credential is required' });
+  }
+
+  try {
+    // Decode the JWT token from Google (base64 payload)
+    // For production, use google-auth-library to verify the token properly
+    const payload = JSON.parse(Buffer.from(credential.split('.')[1], 'base64').toString());
+
+    const email = payload.email;
+    const name = payload.name;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Could not extract email from Google token' });
+    }
+
+    // Upsert user in DB
+    try {
+      await pool.query(
+        `INSERT INTO users (identifier, channel) VALUES ($1, 'google') ON CONFLICT (identifier) DO NOTHING`,
+        [email]
+      );
+    } catch (dbErr) {
+      console.error('DB upsert error (Google):', dbErr.message);
+    }
+
+    console.log(`Google login: ${email} (${name})`);
+    res.json({ success: true, message: 'Google login successful', email, name, token: 'mock-jwt-token-google' });
+
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(500).json({ success: false, message: 'Google authentication failed' });
+  }
+});
+
 app.get('/api/themes', (req, res) => {
   const templatesDir = path.join(__dirname, 'templates');
 
@@ -213,7 +607,7 @@ checkPythonAvailability();
 // Face swap endpoint using local Python script
 app.post('/api/face-swap', async (req, res) => {
   try {
-    const { sourceImage, themeId, theme: themeName } = req.body;
+    const { sourceImage, themeId, theme: themeName, story } = req.body;
 
     const targetThemeId = themeId || themeName;
 
@@ -247,11 +641,7 @@ app.post('/api/face-swap', async (req, res) => {
       console.error("Error searching templates dir:", e);
     }
 
-    // 2. Fallback to hardcoded list if not found in dir (legacy support)
-    if (!templateFilename) {
-      const found = themes.find(t => t.id === targetThemeId);
-      if (found) templateFilename = found.template;
-    }
+    // 2. (Legacy fallback removed — dynamic scanning is primary)
 
     // 3. Ultimate Fallback
     if (!templateFilename) {
@@ -355,19 +745,48 @@ app.post('/api/face-swap', async (req, res) => {
       console.error('[Python Error]:', s);
     });
 
-    pythonProcess.on('close', (code, signal) => {
+    pythonProcess.on('close', async (code, signal) => {
       clearTimeout(pythonTimeout);
       console.log('Python process exited with code:', code, 'signal:', signal);
 
       if (code === 0 && fs.existsSync(resultPath)) {
+
+        // Upload to Azure Blob Storage
+        let blobUrl = null;
+        if (blobContainerClient) {
+          try {
+            const blobName = path.basename(resultPath);
+            const blockBlobClient = blobContainerClient.getBlockBlobClient(blobName);
+            console.log('☁️ Uploading result to Azure Blob...');
+            await blockBlobClient.uploadFile(resultPath);
+            blobUrl = blockBlobClient.url;
+            console.log('✅ Uploaded to Azure:', blobUrl);
+          } catch (uploadErr) {
+            console.error('❌ Azure upload failed:', uploadErr.message);
+          }
+        }
+
         res.json({
           success: true,
           message: 'Face swap completed successfully',
           result: {
             imageUrl: `/results/${resultFileName}`,
+            blobUrl: blobUrl,
             theme: { id: targetThemeId }
           }
         });
+
+        // Save submission to DB (async, non-blocking)
+        try {
+          await pool.query(
+            `INSERT INTO submissions (user_identifier, source_image_path, theme_id, theme_name, mom_story, result_image_path, result_blob_url)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            ['anonymous', sourceImage, targetThemeId, targetThemeId, story || '', `/results/${resultFileName}`, blobUrl || '']
+          );
+          console.log('📝 Submission saved to DB (with Blob URL)');
+        } catch (dbErr) {
+          console.error('DB save error:', dbErr.message);
+        }
       } else {
         // Fallback logic
         console.log('Python script failed. Using emergency template fallback.');
@@ -416,11 +835,7 @@ app.get('/api/download/:filename', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    timestamp: new Date().toISOString(),
-    templatesAvailable: themes.map(t => ({
-      id: t.id,
-      exists: fs.existsSync(path.join(__dirname, 'templates', t.template))
-    }))
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -449,6 +864,17 @@ app.get('/api/results', (req, res) => {
     res.json({ success: true, files });
   } catch (error) {
     res.json({ success: true, files: [] });
+  }
+});
+
+// List all submissions from DB
+app.get('/api/submissions', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM submissions ORDER BY created_at DESC LIMIT 100');
+    res.json({ success: true, submissions: result.rows });
+  } catch (error) {
+    console.error('Error fetching submissions:', error.message);
+    res.json({ success: true, submissions: [] });
   }
 });
 
