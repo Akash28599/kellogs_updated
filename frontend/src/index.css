@@ -1,0 +1,142 @@
+@font-face {
+  font-family: 'KelloggsSans';
+  src: url('./assets/fonts/kelloggssans-regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'KelloggsSans';
+  src: url('./assets/fonts/kelloggssans-medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'KelloggsSans';
+  src: url('./assets/fonts/kelloggssans-bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'KelloggsSans';
+  src: url('./assets/fonts/kelloggssans-light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'KelloggsSans';
+  src: url('./assets/fonts/kelloggssans-italic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Restore legacy variables for compatibility with other components */
+:root {
+  --kelloggs-red: #F60945;
+  --kelloggs-gold: #FFB81C;
+  --kelloggs-dark: #1a1a2e;
+  --kelloggs-light: #f5f5f7;
+  --gradient-primary: linear-gradient(135deg, #F60945 0%, #FF3366 100%);
+  --gradient-gold: linear-gradient(135deg, #FFB81C 0%, #F5A623 50%, #E49308 100%);
+  --gradient-dark: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 8px 40px rgba(0, 0, 0, 0.15);
+  --shadow-strong: 0 20px 60px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 40px rgba(227, 25, 55, 0.4);
+  --shadow-gold-glow: 0 0 40px rgba(255, 184, 28, 0.5);
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+  --spacing-xl: 3rem;
+  --spacing-2xl: 4rem;
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-full: 9999px;
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+  --font-primary: 'KelloggsSans', 'Outfit', 'Poppins', sans-serif;
+  --font-display: 'KelloggsSans', 'Outfit', sans-serif;
+}
+
+html,
+body {
+  font-family: 'KelloggsSans', sans-serif;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+body::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.font-display {
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Global Button Style */
+.btn-kelloggs {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #F60945;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(246, 9, 69, 0.2);
+}
+
+.btn-kelloggs:hover {
+  background: #fff;
+  color: #F60945;
+  border-color: #F60945;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(246, 9, 69, 0.3);
+}
+
+.btn-kelloggs.secondary {
+  background: #fff;
+  color: #444;
+  border: 1px solid #ddd;
+  box-shadow: none;
+}
+
+.btn-kelloggs.secondary:hover {
+  background: #f8f8f8;
+  color: #222;
+  border-color: #ccc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn-kelloggs:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
