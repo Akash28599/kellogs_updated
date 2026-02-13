@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { spawn } = require('child_process');
+const sharp = require('sharp');
 // Manual .env load
 const dotenv = require('dotenv');
 const dotenvPath = path.join(__dirname, '.env');
@@ -99,8 +100,6 @@ const initDB = async () => {
       );
     `);
 
-    // ... rest of initDB ...
-
     await pool.query(`
       CREATE TABLE IF NOT EXISTS submissions (
         id SERIAL PRIMARY KEY,
@@ -115,34 +114,54 @@ const initDB = async () => {
       );
     `);
 
+    // Shares tracking table (wrapped in try-catch for existing type conflicts)
+    try {
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS shares (
+          id SERIAL PRIMARY KEY,
+          submission_id INTEGER REFERENCES submissions(id) ON DELETE SET NULL,
+          share_channel VARCHAR(20) NOT NULL,
+          recipient VARCHAR(255),
+          image_url VARCHAR(1000),
+          share_link VARCHAR(1000),
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+      `);
+    } catch (shareErr) {
+      if (shareErr.code === '42P07' || shareErr.code === '42710') {
+        console.log('ℹ️ Shares table already exists, skipping.');
+      } else {
+        console.warn('⚠️ Shares table warning:', shareErr.message);
+      }
+    }
+
     // Ensure column exists (migration for existing table)
     try {
       await pool.query('ALTER TABLE submissions ADD COLUMN result_blob_url VARCHAR(1000)');
     } catch (e) {
-      if (e.code !== '42701') { // Ignore duplicate column error
+      if (e.code !== '42701') {
         console.log('Notice: Column result_blob_url check:', e.message);
       }
     }
 
-    console.log('✅ PostgreSQL connected & tables ready');
+    console.log('✅ PostgreSQL connected & tables ready (users, submissions, shares)');
   } catch (err) {
     // Auto-create DB if missing (Error 3D000)
     if (err.code === '3D000' || err.message.includes('does not exist')) {
       const dbName = process.env.DB_NAME || 'mom';
       console.log(`⚠️ Database "${dbName}" not found. Attempting to create...`);
       try {
-        // Connect to postgres system db to create new db
         const adminPool = new Pool({
           host: process.env.DB_HOST || 'localhost',
           port: parseInt(process.env.DB_PORT) || 5432,
           user: process.env.DB_USER || 'postgres',
-          password: process.env.DB_PASS || 'Akashkk99@', // Fallback match
+          password: process.env.DB_PASS || 'Akashkk99@',
           database: 'postgres'
         });
         await adminPool.query(`CREATE DATABASE "${dbName}"`);
         await adminPool.end();
         console.log(`✅ Database "${dbName}" created successfully. Retrying initialization...`);
-        return initDB(); // Retry
+        return initDB();
       } catch (createErr) {
         console.error('❌ Failed to auto-create database. Is "postgres" DB accessible?', createErr.message);
       }
@@ -177,7 +196,7 @@ dirs.forEach(dir => {
   }
 });
 
-// Multer configuration for file uploads
+// Multer configuration for file uploads — optimized for traffic
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, path.join(__dirname, 'uploads'));
@@ -190,7 +209,11 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 1,                    // Only 1 file per request
+    fieldSize: 10 * 1024 * 1024  // Field value size limit
+  },
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
     if (allowedTypes.includes(file.mimetype)) {
@@ -200,6 +223,10 @@ const upload = multer({
     }
   }
 });
+
+// Active upload tracking for concurrency control
+let activeUploads = 0;
+const MAX_CONCURRENT_UPLOADS = 20;
 
 // DYNAMIC THEME LOADER
 // Scan templates folder for images and generate themes on the fly
@@ -351,11 +378,101 @@ const sendGenericEmail = async (email, subject, htmlContent) => {
   }
 };
 
-// ... (OTP helpers remain, or could refactor, but keeping separate for safety)
+// ... (OTP helpers remain)
 
-// ...
+// Endpoint: Share via WhatsApp (generates wa.me link)
+app.post('/api/share-whatsapp', async (req, res) => {
+  const { phoneNumber, imageUrl } = req.body;
 
-// Endpoint: Share Result
+  if (!imageUrl) {
+    return res.status(400).json({ success: false, message: 'Image URL is required' });
+  }
+
+  // Clean phone number — remove spaces, dashes, but keep + prefix
+  let cleanPhone = (phoneNumber || '').replace(/[\s()-]/g, '');
+  if (cleanPhone && !cleanPhone.startsWith('+')) {
+    // Default to Nigeria (+234) if no country code
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = '234' + cleanPhone.substring(1);
+    }
+  } else {
+    cleanPhone = cleanPhone.replace(/^\+/, '');
+  }
+
+  const shareMessage = `🎉 Check out my Kellogg's Super Mom transformation!\n\n🦸‍♀️ My mom is a real superhero!\n\n👉 View Image: ${imageUrl}\n\n✨ Create yours at kelloggssuperstars.com`;
+
+  // Generate WhatsApp deep link
+  const waLink = cleanPhone
+    ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(shareMessage)}`
+    : `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
+
+  // Track share in DB
+  try {
+    await pool.query(
+      `INSERT INTO shares (share_channel, recipient, image_url, share_link) VALUES ($1, $2, $3, $4)`,
+      ['whatsapp', cleanPhone || 'direct', imageUrl, waLink]
+    );
+    console.log('📱 WhatsApp share tracked in DB');
+  } catch (dbErr) {
+    console.error('DB share track error:', dbErr.message);
+  }
+
+  res.json({
+    success: true,
+    whatsappLink: waLink,
+    message: 'WhatsApp link generated successfully'
+  });
+});
+
+// Endpoint: Share via Email
+app.post('/api/share-email', async (req, res) => {
+  const { email, imageUrl, themeName } = req.body;
+
+  if (!email || !imageUrl) {
+    return res.status(400).json({ success: false, message: 'Email and image URL are required' });
+  }
+
+  const htmlContent = `
+    <div style="font-family: 'Arial', sans-serif; max-width: 600px; margin: 0 auto; background: #fff;">
+      <div style="background: linear-gradient(135deg, #F60945, #FF4D6D); padding: 30px 20px; text-align: center; border-radius: 12px 12px 0 0;">
+        <h1 style="color: #fff; margin: 0; font-size: 24px;">Kellogg's Super Mom</h1>
+        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">🦸‍♀️ A Superhero Transformation</p>
+      </div>
+      <div style="padding: 30px 24px; text-align: center;">
+        <h2 style="color: #222; margin-bottom: 8px;">Your Super Mom Portrait is Ready! ✨</h2>
+        ${themeName ? `<p style="color: #888; font-size: 14px;">Theme: <strong>${themeName}</strong></p>` : ''}
+        <p style="color: #555; line-height: 1.6;">Someone special created a superhero transformation for their mom using Kellogg's Super Mom Maker!</p>
+        <a href="${imageUrl}" style="display: inline-block; background: #F60945; color: #fff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 20px 0;">🖼️ View Image</a>
+        <p style="color: #999; font-size: 13px;">Or copy this link: <a href="${imageUrl}" style="color: #F60945;">${imageUrl}</a></p>
+      </div>
+      <div style="background: #FFF0F3; padding: 20px; text-align: center; border-radius: 0 0 12px 12px;">
+        <p style="color: #888; font-size: 13px; margin: 0;">Create your own Super Mom at <a href="https://kelloggssuperstars.com" style="color: #F60945; text-decoration: none; font-weight: bold;">kelloggssuperstars.com</a></p>
+      </div>
+    </div>
+  `;
+
+  try {
+    await sendGenericEmail(email, "🦸‍♀️ Your Kellogg's Super Mom Portrait is Ready!", htmlContent);
+
+    // Track share in DB
+    try {
+      await pool.query(
+        `INSERT INTO shares (share_channel, recipient, image_url) VALUES ($1, $2, $3)`,
+        ['email', email, imageUrl]
+      );
+      console.log('📧 Email share tracked in DB');
+    } catch (dbErr) {
+      console.error('DB share track error:', dbErr.message);
+    }
+
+    res.json({ success: true, message: `Image shared to ${email} successfully!` });
+  } catch (err) {
+    console.error('Share email error:', err);
+    res.status(500).json({ success: false, message: 'Failed to send email. Please try again.' });
+  }
+});
+
+// Legacy Share Endpoint (keep for backward compat)
 app.post('/api/share', async (req, res) => {
   const { channel, identifier, imageUrl } = req.body;
 
@@ -559,22 +676,55 @@ app.get('/api/themes/:id', (req, res) => {
   });
 });
 
-// Upload image
-app.post('/api/upload', upload.single('image'), (req, res) => {
+// Upload image — with concurrency control and auto-compression
+app.post('/api/upload', (req, res, next) => {
+  // Concurrency guard
+  if (activeUploads >= MAX_CONCURRENT_UPLOADS) {
+    return res.status(503).json({ success: false, message: 'Server busy. Please try again in a moment.' });
+  }
+  activeUploads++;
+  next();
+}, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
+      activeUploads--;
       return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
+
+    // Auto-compress uploaded image using Sharp (saves disk space & speeds up face swap)
+    const originalPath = req.file.path;
+    const compressedName = `opt_${req.file.filename}`;
+    const compressedPath = path.join(__dirname, 'uploads', compressedName);
+
+    try {
+      await sharp(originalPath)
+        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85, mozjpeg: true })
+        .toFile(compressedPath);
+
+      // Replace original with compressed version
+      fs.unlinkSync(originalPath);
+      fs.renameSync(compressedPath, originalPath);
+      console.log(`📦 Compressed upload: ${req.file.filename}`);
+    } catch (compressErr) {
+      console.warn('⚠️ Compression skipped:', compressErr.message);
+      // Keep original if compression fails
+    }
+
+    activeUploads--;
+
     res.json({
       success: true,
       message: 'File uploaded successfully',
       file: {
         filename: req.file.filename,
         path: `/uploads/${req.file.filename}`,
-        originalName: req.file.originalname
+        originalName: req.file.originalname,
+        size: req.file.size
       }
     });
   } catch (error) {
+    activeUploads--;
     console.error('Upload error:', error);
     res.status(500).json({ success: false, message: 'Failed to upload file' });
   }
@@ -877,6 +1027,42 @@ app.get('/api/submissions', async (req, res) => {
     res.json({ success: true, submissions: [] });
   }
 });
+
+// List all shares from DB
+app.get('/api/shares', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM shares ORDER BY created_at DESC LIMIT 100');
+    res.json({ success: true, shares: result.rows });
+  } catch (error) {
+    console.error('Error fetching shares:', error.message);
+    res.json({ success: true, shares: [] });
+  }
+});
+
+// Cleanup old uploads (files older than 24 hours)
+const cleanupOldUploads = () => {
+  const uploadsDir = path.join(__dirname, 'uploads');
+  const ONE_DAY = 24 * 60 * 60 * 1000;
+  try {
+    const files = fs.readdirSync(uploadsDir);
+    let cleaned = 0;
+    files.forEach(file => {
+      const filePath = path.join(uploadsDir, file);
+      const stats = fs.statSync(filePath);
+      if (Date.now() - stats.mtimeMs > ONE_DAY) {
+        fs.unlinkSync(filePath);
+        cleaned++;
+      }
+    });
+    if (cleaned > 0) console.log(`🧹 Cleaned ${cleaned} old upload(s)`);
+  } catch (err) {
+    // Silent fail
+  }
+};
+
+// Run cleanup every 6 hours
+setInterval(cleanupOldUploads, 6 * 60 * 60 * 1000);
+cleanupOldUploads(); // Run once on startup
 
 // Error handling middleware
 app.use((error, req, res, next) => {
