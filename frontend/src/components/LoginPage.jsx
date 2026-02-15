@@ -7,8 +7,8 @@ import kelloggsLogo from '../assets/kelloggs-logo.png';
 
 const API_URL = 'http://localhost:5000';
 
-// Google OAuth Client ID — replace with your actual client ID
-const GOOGLE_CLIENT_ID = ''; // Will be configured later
+// Google OAuth Client ID
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 const LoginPage = ({ onBack, onLogin }) => {
   const [activeTab, setActiveTab] = useState('email');

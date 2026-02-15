@@ -218,7 +218,8 @@ function AppContent() {
       const response = await axios.post(`${API_URL}/api/face-swap`, {
         sourceImage: uploadedFile.path,
         themeId: selectedTheme.id,
-        story: momStory // send story along
+        story: momStory,
+        userIdentifier: userEmail // Pass user email if logged in
       }, { timeout: 120000 });
 
       console.log('API Response:', response.data);

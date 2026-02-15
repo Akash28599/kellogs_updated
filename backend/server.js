@@ -931,7 +931,7 @@ app.post('/api/face-swap', async (req, res) => {
           await pool.query(
             `INSERT INTO submissions (user_identifier, source_image_path, theme_id, theme_name, mom_story, result_image_path, result_blob_url)
              VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            ['anonymous', sourceImage, targetThemeId, targetThemeId, story || '', `/results/${resultFileName}`, blobUrl || '']
+            [req.body.userIdentifier || 'anonymous', sourceImage, targetThemeId, targetThemeId, story || '', `/results/${resultFileName}`, blobUrl || '']
           );
           console.log('📝 Submission saved to DB (with Blob URL)');
         } catch (dbErr) {
