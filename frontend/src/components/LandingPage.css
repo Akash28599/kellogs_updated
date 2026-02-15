@@ -27,14 +27,11 @@
 }
 
 .landing-nav-logo {
-    font-family: 'Poppins', sans-serif;
-    font-weight: 900;
-    font-style: italic;
-    font-size: 1.75rem;
-    color: #fff;
-    letter-spacing: -1px;
+    height: 36px;
+    width: auto;
     cursor: pointer;
     user-select: none;
+    filter: brightness(0) invert(1);
 }
 
 .landing-nav-btn {
@@ -66,37 +63,11 @@
     align-items: center;
     justify-content: flex-start;
     padding: 100px 24px 60px;
-    background: linear-gradient(135deg, #FF6B35 0%, #F60945 25%, #F60945 50%, #FF2D78 75%, #FF6BA0 100%);
-    overflow: hidden;
+    background: #F60945;
+    /* overflow: hidden; Removed to ensure scrolling works if content overflows */
 }
 
-/* Radial glow left */
-.landing-hero::before {
-    content: '';
-    position: absolute;
-    top: 10%;
-    left: -5%;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(255, 165, 0, 0.5) 0%, transparent 70%);
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 0;
-}
-
-/* Soft glow right */
-.landing-hero::after {
-    content: '';
-    position: absolute;
-    top: 5%;
-    right: -5%;
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 60%);
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 0;
-}
+/* Glow effects removed as per user request */
 
 /* Floating Stars */
 .star-decoration {
@@ -208,7 +179,7 @@
 }
 
 .hero-title {
-    font-family: 'Poppins', sans-serif;
+    font-family: 'KelloggsSans', sans-serif;
     font-weight: 900;
     font-size: clamp(2.5rem, 5.5vw, 4rem);
     color: #fff;
@@ -232,12 +203,32 @@
     margin-right: auto;
 }
 
+.hero-reward-label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #FFC700;
+    margin-bottom: 0.5rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.hero-reward-text {
+    font-family: 'KelloggsSans', sans-serif;
+    font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 2.5rem;
+    text-transform: uppercase;
+    line-height: 1.2;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
 .hero-cta {
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    background: #F60945;
-    color: #fff;
+    background: #FFC700;
+    color: #000;
     padding: 14px 32px;
     border-radius: 999px;
     font-weight: 700;
@@ -250,8 +241,8 @@
 
 .hero-cta:hover {
     background: #fff;
-    color: #F60945;
-    border-color: #F60945;
+    color: #000;
+    border-color: #FFC700;
     transform: translateY(-3px);
     box-shadow: 0 12px 40px rgba(246, 9, 69, 0.35);
 }
@@ -435,7 +426,7 @@
 /* ---------- SECTION: HOW TO ENTER ---------- */
 .section-how-to-enter {
     padding: 80px 24px;
-    background: linear-gradient(180deg, #FFF9EE 0%, #FFF5E0 100%);
+    background: #ffffff;
     position: relative;
 }
 
@@ -635,12 +626,10 @@
 }
 
 .footer-brand-logo {
-    font-family: 'Poppins', sans-serif;
-    font-weight: 900;
-    font-style: italic;
-    font-size: 1.6rem;
-    color: #fff;
+    height: 42px;
+    width: auto;
     margin-bottom: 14px;
+    filter: brightness(0) invert(1);
 }
 
 .footer-brand-desc {

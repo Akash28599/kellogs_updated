@@ -24,7 +24,7 @@
 
 /* Loading page gets cream background */
 .app-wizard.loading-bg {
-    background: linear-gradient(180deg, #FFF6EE 0%, #FFF0E3 50%, #FFFAF4 100%);
+    background: #ffffff;
 }
 
 /* ---- Wizard Header/Nav ---- */
@@ -33,10 +33,11 @@
     align-items: center;
     justify-content: center;
     padding: 14px 30px;
-    background: #fff;
-    border-bottom: 1px solid #f0f0f0;
+    background: #F60945;
+    border-bottom: none;
     position: relative;
     z-index: 10;
+    box-shadow: 0 4px 12px rgba(246, 9, 69, 0.2);
 }
 
 .wizard-back-btn {
@@ -49,22 +50,19 @@
     border: none;
     font-size: 0.92rem;
     font-weight: 600;
-    color: #444;
+    color: #fff;
     cursor: pointer;
     transition: color 0.2s ease;
 }
 
 .wizard-back-btn:hover {
-    color: var(--kelloggs-red);
+    color: #FFC700;
 }
 
 .kelloggs-logo {
-    font-family: 'Poppins', sans-serif;
-    font-weight: 900;
-    font-style: italic;
-    font-size: 1.5rem;
-    color: var(--kelloggs-red);
-    letter-spacing: -0.5px;
+    height: 40px;
+    width: auto;
+    filter: brightness(0) invert(1);
 }
 
 /* Step indicator (right side, top) */
@@ -76,7 +74,7 @@
     gap: 10px;
     font-weight: 700;
     font-size: 0.88rem;
-    color: #333;
+    color: #fff;
 }
 
 .wizard-step-badge {
@@ -86,8 +84,8 @@
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: var(--kelloggs-red);
-    color: #fff;
+    background: #fff;
+    color: #F60945;
     font-weight: 800;
     font-size: 0.78rem;
 }
@@ -136,7 +134,7 @@
 
 /* Red highlight text in title */
 .title-red {
-    color: var(--kelloggs-red);
+    color: #F60945;
 }
 
 .upload-page-subtitle {
@@ -260,7 +258,7 @@
     content: '•';
     position: absolute;
     left: 0;
-    color: var(--kelloggs-red);
+    color: #F60945;
     font-weight: 700;
 }
 
@@ -305,7 +303,7 @@
 .theme-icon-lg {
     font-size: 2rem;
     margin-bottom: 0.8rem;
-    color: var(--kelloggs-red);
+    color: #F60945;
 }
 
 .theme-option.selected .theme-icon-lg {
@@ -319,7 +317,7 @@
    ============================================ */
 .loading-view {
     min-height: 100vh;
-    background: linear-gradient(180deg, #FFF0F3 0%, #FFF6EE 30%, #FFFAF4 60%, #FFF6EE 100%);
+    background: #ffffff;
     position: relative;
     overflow: hidden;
 }
@@ -331,7 +329,8 @@
 }
 
 .loading-header .kelloggs-logo {
-    font-size: 1.4rem;
+    height: 48px;
+    width: auto;
 }
 
 .loading-wrapper {
@@ -400,7 +399,7 @@
 }
 
 .loading-progress-pct {
-    color: var(--kelloggs-red);
+    color: #F60945;
     font-weight: 700;
 }
 
@@ -1170,6 +1169,7 @@
     color: #999;
     margin-top: 4px;
 }
+
 /* ===== WHATSAPP BUTTON ON RESULT PAGE ===== */
 .result-btn.whatsapp {
     background: #25D366;
@@ -1342,8 +1342,80 @@
         opacity: 0;
         transform: scale(0.95);
     }
+
     100% {
         opacity: 1;
         transform: scale(1);
+    }
+}
+/* PC Optimizations: Spread themes out more on larger screens */
+@media (min-width: 1024px) {
+    .wizard-card {
+        max-width: 1200px;
+    }
+    .theme-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
+}
+
+@media (min-width: 1400px) {
+    .wizard-card {
+        max-width: 1600px;
+    }
+    .theme-grid {
+        grid-template-columns: repeat(8, 1fr);
+    }
+}
+
+/* Result Card Responsive Styles */
+.greeting-card-container {
+    display: flex;
+    flex-direction: row;
+    background: #F60945;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    margin-bottom: 30px;
+    min-height: 400px;
+}
+
+.card-image-side {
+    flex: 1;
+    background: #000;
+    position: relative;
+    min-height: 250px;
+}
+
+.card-image-side img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.card-message-side {
+    flex: 1;
+    padding: 40px 30px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    position: relative;
+}
+
+@media (max-width: 768px) {
+    .greeting-card-container {
+        flex-direction: column;
+        min-height: auto;
+    }
+    .card-image-side {
+        width: 100%;
+        height: 350px;
+        flex: none;
+    }
+    .card-message-side {
+        padding: 30px 20px;
     }
 }

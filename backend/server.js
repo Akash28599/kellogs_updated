@@ -698,8 +698,8 @@ app.post('/api/upload', (req, res, next) => {
 
     try {
       await sharp(originalPath)
-        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 85, mozjpeg: true })
+        .resize(1024, 1024, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 95, mozjpeg: true })
         .toFile(compressedPath);
 
       // Replace original with compressed version

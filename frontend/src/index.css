@@ -40,6 +40,7 @@
 /* Restore legacy variables for compatibility with other components */
 :root {
   --kelloggs-red: #F60945;
+  --kelloggs-red-rgb: 246, 9, 69;
   --kelloggs-gold: #FFB81C;
   --kelloggs-dark: #1a1a2e;
   --kelloggs-light: #f5f5f7;
