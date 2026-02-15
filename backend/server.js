@@ -144,6 +144,14 @@ const initDB = async () => {
       }
     }
 
+    // Migration for Queue System columns
+    try {
+      await pool.query('ALTER TABLE submissions ADD COLUMN job_id VARCHAR(100)');
+      await pool.query('ALTER TABLE submissions ADD COLUMN status VARCHAR(20) DEFAULT \'completed\'');
+    } catch (e) {
+      // Ignore if exists
+    }
+
     console.log('✅ PostgreSQL connected & tables ready (users, submissions, shares)');
   } catch (err) {
     // Auto-create DB if missing (Error 3D000)
@@ -754,33 +762,43 @@ const checkPythonAvailability = () => {
 // Check on startup
 checkPythonAvailability();
 
-// Face swap endpoint using local Python script
-app.post('/api/face-swap', async (req, res) => {
-  try {
-    const { sourceImage, themeId, theme: themeName, story } = req.body;
+// ------------------------------------------------------------------
+// JOB QUEUE SYSTEM
+// ------------------------------------------------------------------
 
+const jobQueue = [];
+const jobStore = new Map(); // { jobId: { status, result, error, progress } }
+const MAX_CONCURRENT_JOBS = 1; // Strict limit: Only 1 AI process at a time
+let activeJobs = 0;
+
+const processNextJob = () => {
+  if (activeJobs >= MAX_CONCURRENT_JOBS || jobQueue.length === 0) {
+    return;
+  }
+
+  const job = jobQueue.shift();
+  activeJobs++;
+  processJob(job);
+};
+
+const processJob = async (job) => {
+  const { jobId, sourceImage, themeId, themeName, story, userIdentifier } = job;
+
+  // Update status to processing
+  jobStore.set(jobId, { status: 'processing', startTime: Date.now() });
+  console.log(`⚙️ Starting Job ${jobId} (Queue size: ${jobQueue.length})`);
+
+  try {
     const targetThemeId = themeId || themeName;
 
-    if (!sourceImage || !targetThemeId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Source image and theme ID are required'
-      });
-    }
-
-    // DYNAMIC FILE LOOKUP
-    // We cannot use 'themes.find' because 'themes' only has the default 5 hardcoded ones.
-    // We must scan the directory to find the file that corresponds to 'targetThemeId'.
-
+    // --- TEMPLATE LOOKUP LOGIC ---
     let templateFilename = null;
     const templatesDir = path.join(__dirname, 'templates');
     const DEFAULT_TEMPLATE = 'captain_early_riser.png';
 
-    // 1. Try to find match in directory
     try {
       if (fs.existsSync(templatesDir)) {
         const files = fs.readdirSync(templatesDir);
-        // Match logic: sanitized filename (no ext) === targetThemeId
         const match = files.find(f => {
           const idFromF = f.replace(/\.(jpg|jpeg|png)$/i, '').toLowerCase().replace(/[^a-z0-9]/g, '-');
           return idFromF === targetThemeId;
@@ -788,187 +806,200 @@ app.post('/api/face-swap', async (req, res) => {
         if (match) templateFilename = match;
       }
     } catch (e) {
-      console.error("Error searching templates dir:", e);
+      console.error("Error searching templates:", e);
     }
 
-    // 2. (Legacy fallback removed — dynamic scanning is primary)
-
-    // 3. Ultimate Fallback
     if (!templateFilename) {
       console.log(`Theme ${targetThemeId} not found. Using default.`);
       templateFilename = DEFAULT_TEMPLATE;
     }
 
     let templatePath = path.join(__dirname, 'templates', templateFilename);
-
-    // Final sanity check
+    // Sanity check
     if (!fs.existsSync(templatePath)) {
-      console.log(`Template file ${templateFilename} missing! Using emergency fallback.`);
       templatePath = path.join(__dirname, 'templates', DEFAULT_TEMPLATE);
       templateFilename = DEFAULT_TEMPLATE;
     }
 
-    // Mock a 'theme' object for response
-    const theme = {
-      id: targetThemeId,
-      template: templateFilename
-    };
-
-    // Get full paths
+    const theme = { id: targetThemeId, template: templateFilename };
     const sourceImagePath = path.join(__dirname, sourceImage.replace(/^\//, ''));
-
-    const resultFileName = `result_${uuidv4()}.png`;
+    const resultFileName = `result_${jobId}.png`; // Use JobID in filename
     const resultPath = path.join(__dirname, 'results', resultFileName);
 
-    // Check if files exist
+    // Validate Source
     if (!fs.existsSync(sourceImagePath)) {
-      return res.status(404).json({ success: false, message: 'Source image not found' });
+      throw new Error('Source image file not found on server');
     }
 
-    if (!fs.existsSync(templatePath)) {
-      return res.status(404).json({
-        success: false,
-        message: `No template images found. Please add ${DEFAULT_TEMPLATE} to the templates folder.`
-      });
-    }
+    // --- EXECUTION (PYTHON OR FALLBACK) ---
 
-    // FAST PATH: If Python is not available, return fallback immediately
+    // Fast Path: Demo Mode (No Python)
     if (!PYTHON_AVAILABLE) {
-      console.log('Python not available. Skipping script for instant fallback.');
-      try {
-        fs.copyFileSync(templatePath, resultPath);
-        return res.json({
-          success: true,
-          message: 'Face swap completed (Demo Mode - No AI)',
-          result: {
-            imageUrl: `/results/${resultFileName}`,
-            theme: theme
-          },
-          demo: true,
-          note: 'Running in instant demo mode because Python/OpenCV is not installed.'
-        });
-      } catch (err) {
-        return res.status(500).json({ success: false, message: 'Fallback failed.' });
-      }
+      console.log('⚠️ Python missing. Using fallback copy.');
+      fs.copyFileSync(templatePath, resultPath);
+
+      // Success (Demo)
+      const result = {
+        imageUrl: `/results/${resultFileName}`,
+        theme: theme,
+        demo: true,
+        note: 'Demo mode (AI unavailable)'
+      };
+      jobStore.set(jobId, { status: 'completed', result });
+
+      // Record in DB
+      await recordSubmission(job, `/results/${resultFileName}`, null, 'completed');
+      return;
     }
 
-    console.log('Starting face swap...');
-    console.log('Source:', sourceImagePath);
-    console.log('Template:', templatePath);
-    console.log('Output:', resultPath);
-
-    // Run Python face swap script
-    // Run Python face swap script
-    const pythonCommand = 'py';
+    // AI Execution
+    console.log(`🚀 Spawning Python for Job ${jobId}...`);
     const scriptPath = path.join(__dirname, 'face_swap.py');
-    console.log('🚀 Spawning Pro Face Swap Pipeline (InsightFace)...');
-
     const args = [
-      '-3.10',
-      scriptPath,
+      '-3.10', scriptPath,
       '--source', sourceImagePath,
       '--target', templatePath,
       '--output', resultPath,
       '--cpu'
     ];
 
-    const pythonProcess = spawn(pythonCommand, args);
+    const pythonProcess = spawn('py', args);
 
-    // Timeout handling
+    // 90s Timeout
     const pythonTimeout = setTimeout(() => {
-      console.log('Python script timed out (90s). Killing process...');
       pythonProcess.kill();
+      jobStore.set(jobId, { status: 'failed', error: 'Processing timed out (90s)' });
+      console.error(`❌ Job ${jobId} timed out.`);
     }, 90000);
 
-    let stdoutData = '';
-    let stderrData = '';
+    pythonProcess.stdout.on('data', (d) => console.log(`[Job ${jobId}]:`, d.toString().trim()));
+    pythonProcess.stderr.on('data', (d) => console.error(`[Job ${jobId} Err]:`, d.toString().trim()));
 
-    pythonProcess.stdout.on('data', (data) => {
-      const s = data.toString();
-      stdoutData += s;
-      console.log('[Python]:', s);
-    });
-
-    pythonProcess.stderr.on('data', (data) => {
-      const s = data.toString();
-      stderrData += s;
-      console.error('[Python Error]:', s);
-    });
-
-    pythonProcess.on('close', async (code, signal) => {
+    pythonProcess.on('close', async (code) => {
       clearTimeout(pythonTimeout);
-      console.log('Python process exited with code:', code, 'signal:', signal);
 
       if (code === 0 && fs.existsSync(resultPath)) {
-
-        // Upload to Azure Blob Storage
+        // Azure Upload
         let blobUrl = null;
         if (blobContainerClient) {
           try {
             const blobName = path.basename(resultPath);
             const blockBlobClient = blobContainerClient.getBlockBlobClient(blobName);
-            console.log('☁️ Uploading result to Azure Blob...');
             await blockBlobClient.uploadFile(resultPath);
             blobUrl = blockBlobClient.url;
-            console.log('✅ Uploaded to Azure:', blobUrl);
-          } catch (uploadErr) {
-            console.error('❌ Azure upload failed:', uploadErr.message);
+          } catch (e) {
+            console.error('Azure Upload Error:', e.message);
           }
         }
 
-        res.json({
-          success: true,
-          message: 'Face swap completed successfully',
-          result: {
-            imageUrl: `/results/${resultFileName}`,
-            blobUrl: blobUrl,
-            theme: { id: targetThemeId }
-          }
-        });
+        const result = {
+          imageUrl: `/results/${resultFileName}`,
+          blobUrl: blobUrl,
+          theme: theme
+        };
 
-        // Save submission to DB (async, non-blocking)
-        try {
-          await pool.query(
-            `INSERT INTO submissions (user_identifier, source_image_path, theme_id, theme_name, mom_story, result_image_path, result_blob_url)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [req.body.userIdentifier || 'anonymous', sourceImage, targetThemeId, targetThemeId, story || '', `/results/${resultFileName}`, blobUrl || '']
-          );
-          console.log('📝 Submission saved to DB (with Blob URL)');
-        } catch (dbErr) {
-          console.error('DB save error:', dbErr.message);
-        }
+        jobStore.set(jobId, { status: 'completed', result });
+        await recordSubmission(job, `/results/${resultFileName}`, blobUrl, 'completed');
+
       } else {
-        // Fallback logic
-        console.log('Python script failed. Using emergency template fallback.');
+        console.log(`Job ${jobId} Python failed. Using fallback.`);
+        // Fallback Copy
         try {
-          if (!fs.existsSync(resultPath)) {
-            fs.copyFileSync(templatePath, resultPath);
-          }
-          res.json({
-            success: true,
-            message: 'Face swap completed (Demo Mode - AI Failed)',
-            result: {
-              imageUrl: `/results/${resultFileName}`,
-              theme: { id: targetThemeId }
-            },
-            note: 'AI processing failed. Showing template only.'
-          });
+          if (!fs.existsSync(resultPath)) fs.copyFileSync(templatePath, resultPath);
+          const result = {
+            imageUrl: `/results/${resultFileName}`,
+            theme: theme,
+            demo: true,
+            note: 'AI failed, using template fallback'
+          };
+          jobStore.set(jobId, { status: 'completed', result });
+          await recordSubmission(job, `/results/${resultFileName}`, null, 'completed');
         } catch (e) {
-          if (!res.headersSent) res.status(500).json({ success: false, message: 'Server error' });
+          jobStore.set(jobId, { status: 'failed', error: 'Processing failed completely' });
         }
       }
-    });
 
-    pythonProcess.on('error', (err) => {
-      clearTimeout(pythonTimeout);
-      console.error('Failed to spawn python:', err);
-      if (!res.headersSent) res.status(500).json({ success: false, message: 'Failed to start subprocess' });
+      // Trigger next
+      activeJobs--;
+      processNextJob();
     });
 
   } catch (error) {
-    console.error('Face swap error:', error);
-    if (!res.headersSent) res.status(500).json({ success: false, message: 'Internal Server Error' });
+    console.error(`Job ${jobId} Exception:`, error);
+    jobStore.set(jobId, { status: 'failed', error: error.message });
+    activeJobs--;
+    processNextJob();
   }
+};
+
+// Helper to save to DB
+const recordSubmission = async (job, resultPath, blobUrl, status) => {
+  try {
+    await pool.query(
+      `INSERT INTO submissions (user_identifier, source_image_path, theme_id, theme_name, mom_story, result_image_path, result_blob_url, job_id, status)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [job.userIdentifier || 'anonymous', job.sourceImage, job.themeId, job.themeName, job.story || '', resultPath, blobUrl || '', job.jobId, status]
+    );
+    console.log(`📝 Job ${job.jobId} recorded in DB`);
+  } catch (e) {
+    console.error('DB Record Error:', e.message);
+  }
+};
+
+
+// 1. ENQUEUE ENDPOINT
+app.post('/api/face-swap', (req, res) => {
+  const { sourceImage, themeId, theme: themeName, story, userIdentifier } = req.body;
+
+  if (!sourceImage || (!themeId && !themeName)) {
+    return res.status(400).json({ success: false, message: 'Source image and theme required' });
+  }
+
+  const jobId = uuidv4();
+  const job = {
+    jobId,
+    sourceImage,
+    themeId,
+    themeName,
+    story,
+    userIdentifier,
+    timestamp: Date.now()
+  };
+
+  // Add to Store
+  jobStore.set(jobId, { status: 'pending', timestamp: Date.now() });
+
+  // Add to Queue
+  jobQueue.push(job);
+
+  // Trigger Processing
+  processNextJob();
+
+  // Respond immediately
+  res.json({
+    success: true,
+    message: 'Job queued successfully',
+    jobId: jobId,
+    queuePosition: jobQueue.length // Approx position
+  });
+});
+
+// 2. STATUS POLLING ENDPOINT
+app.get('/api/status/:jobId', (req, res) => {
+  const { jobId } = req.params;
+  const jobData = jobStore.get(jobId);
+
+  if (!jobData) {
+    return res.status(404).json({ success: false, message: 'Job not found' });
+  }
+
+  res.json({
+    success: true,
+    jobId,
+    status: jobData.status, // pending, processing, completed, failed
+    result: jobData.result, // populated if completed
+    error: jobData.error
+  });
 });
 
 // Download result
