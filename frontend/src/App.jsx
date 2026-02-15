@@ -197,6 +197,44 @@ function AppContent() {
     return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
   };
 
+  // Helper: Poll for Job Status
+  const pollJobStatus = async (jobId) => {
+    return new Promise((resolve, reject) => {
+      let attempts = 0;
+      const maxAttempts = 40; // Approx 2 minutes (3s interval)
+
+      const check = async () => {
+        try {
+          if (attempts++ >= maxAttempts) {
+            reject(new Error('Request timed out'));
+            return;
+          }
+
+          const response = await axios.get(`${API_URL}/api/status/${jobId}`);
+          const { status, result, error } = response.data;
+
+          if (status === 'completed') {
+            setResultImage(`${API_URL}${result.imageUrl}`);
+            setResultBlobUrl(result.blobUrl || '');
+            resolve(result);
+          } else if (status === 'failed') {
+            reject(new Error(error || 'Generation failed'));
+          } else {
+            // Update UI based on status
+            if (status === 'pending') setLoadingMessage('Waiting in line (Queue)...');
+            else if (status === 'processing') setLoadingMessage('AI is valid processing your photo...');
+            
+            setTimeout(check, 3000);
+          }
+        } catch (err) {
+          reject(err);
+        }
+      };
+
+      check();
+    });
+  };
+
   // Generate face swap — called from Step 3 (Write Story) now
   const handleGenerate = async () => {
     console.log('Generating started...');
@@ -207,30 +245,31 @@ function AppContent() {
 
     setIsLoading(true);
     setCurrentStep(3); // Loading step (Step 3)
-    setLoadingMessage('Preparing your superhero transformation...');
+    setLoadingMessage('Adding to queue...');
     setError('');
     setIsFallback(false);
 
     try {
-      setLoadingMessage('Working magic with AI face swap...');
       console.log('Sending API request...');
       
+      // 1. Submit Job
       const response = await axios.post(`${API_URL}/api/face-swap`, {
         sourceImage: uploadedFile.path,
         themeId: selectedTheme.id,
         story: momStory,
         userIdentifier: userEmail // Pass user email if logged in
-      }, { timeout: 120000 });
+      }, { timeout: 30000 }); // Short timeout for enqueue
 
-      console.log('API Response:', response.data);
-
-      if (response.data.success) {
-        setResultImage(`${API_URL}${response.data.result.imageUrl}`);
-        setResultBlobUrl(response.data.result.blobUrl || '');
-        setCurrentStep(4); // Result step (Step 4)
+      if (response.data.success && response.data.jobId) {
+         console.log(`Job Queued: ${response.data.jobId}`);
+         // 2. Poll
+         await pollJobStatus(response.data.jobId);
+         // Success handled in pollJobStatus resolver
+         setCurrentStep(4);
       } else {
         throw new Error(response.data.message || 'Generation failed');
       }
+
     } catch (err) {
       console.error('Generation Error:', err);
       
@@ -799,123 +838,89 @@ function AppContent() {
               <button className="share-modal-close" onClick={() => setShowShareModal(false)}>
                 <FiX size={20} />
               </button>
-
-              <div className="share-modal-icon">🔗</div>
-              <h3 className="share-modal-title">Share Your Super Mom</h3>
-              <p className="share-modal-subtitle">Choose how you want to share your creation</p>
-
-              {/* Tab Switcher */}
+              
+              <h3 className="share-modal-title">Share Your Card</h3>
+              
               <div className="share-tabs">
-                <button
+                <button 
                   className={`share-tab ${shareTab === 'whatsapp' ? 'active' : ''}`}
                   onClick={() => setShareTab('whatsapp')}
                 >
-                  <IoLogoWhatsapp size={16} /> WhatsApp
+                  <IoLogoWhatsapp /> WhatsApp
                 </button>
-                <button
+                <button 
                   className={`share-tab ${shareTab === 'email' ? 'active' : ''}`}
                   onClick={() => setShareTab('email')}
                 >
-                  <FiMail size={16} /> Email
+                  <FiMail /> Email
                 </button>
               </div>
 
-              {/* Success Message */}
+              <div className="share-content">
+                {shareTab === 'whatsapp' && (
+                  <div className="share-form">
+                    <p>Enter phone number (with country code):</p>
+                    <input 
+                      type="tel" 
+                      placeholder="+234..." 
+                      className="share-input"
+                      value={sharePhone}
+                      onChange={(e) => setSharePhone(e.target.value)}
+                    />
+                    <button 
+                      className="share-btn whatsapp"
+                      disabled={shareLoading}
+                      onClick={() => handleWhatsAppShare(true)}
+                    >
+                      {shareLoading ? 'Opening...' : 'Send via WhatsApp'}
+                    </button>
+                    <div className="share-divider">OR</div>
+                    <button 
+                      className="share-btn outline"
+                      onClick={() => handleWhatsAppShare(false)}
+                    >
+                      Share with Contacts
+                    </button>
+                  </div>
+                )}
+
+                {shareTab === 'email' && (
+                  <div className="share-form">
+                    <p>Enter email address:</p>
+                    <input 
+                      type="email" 
+                      placeholder="mom@example.com" 
+                      className="share-input"
+                      value={shareEmail}
+                      onChange={(e) => setShareEmail(e.target.value)}
+                    />
+                    <button 
+                      className="share-btn primary"
+                      disabled={shareLoading}
+                      onClick={handleEmailShare}
+                    >
+                      {shareLoading ? 'Sending...' : 'Send Email'} <FiZap />
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {shareSuccess && (
-                <div className="share-success-msg">
-                  <FiCheckCircle size={16} /> {shareSuccess}
+                <div style={{ marginTop: '15px', color: 'green', fontWeight: 'bold', textAlign: 'center' }}>
+                  {shareSuccess}
                 </div>
               )}
 
-              <div className="share-form">
-                {/* WhatsApp Tab */}
-                {shareTab === 'whatsapp' && (
-                  <>
-                    <div className="share-quick-action">
-                      <button
-                        className="share-whatsapp-direct-btn"
-                        onClick={() => handleWhatsAppShare(false)}
-                        disabled={shareLoading}
-                      >
-                        <IoLogoWhatsapp size={20} />
-                        {shareLoading ? 'Opening...' : 'Share on WhatsApp Now'}
-                      </button>
-                      <p style={{ fontSize: '0.82rem', color: '#888', marginTop: '8px' }}>Opens WhatsApp with your image link ready to send</p>
-                    </div>
-
-                    <div className="share-divider">
-                      <span>or send to a specific number</span>
-                    </div>
-
-                    <div className="share-input-group">
-                      <label><FiPhone size={14} /> WhatsApp Number</label>
-                      <input
-                        type="tel"
-                        placeholder="+234 800 000 0000"
-                        value={sharePhone}
-                        onChange={(e) => setSharePhone(e.target.value)}
-                      />
-                    </div>
-
-                    <button
-                      className="share-submit-btn whatsapp-btn"
-                      onClick={() => handleWhatsAppShare(true)}
-                      disabled={!sharePhone || shareLoading}
-                    >
-                      <IoLogoWhatsapp size={16} />
-                      {shareLoading ? 'Sending...' : 'Send to This Number'}
-                    </button>
-                  </>
-                )}
-
-                {/* Email Tab */}
-                {shareTab === 'email' && (
-                  <>
-                    <div className="share-input-group">
-                      <label><FiMail size={14} /> Recipient Email <span style={{ color: '#F60945' }}>*</span></label>
-                      <input
-                        type="email"
-                        placeholder="mom@email.com"
-                        value={shareEmail}
-                        onChange={(e) => setShareEmail(e.target.value)}
-                      />
-                    </div>
-
-                    <button
-                      className="share-submit-btn"
-                      onClick={handleEmailShare}
-                      disabled={!shareEmail || shareLoading}
-                    >
-                      <FiMail size={16} />
-                      {shareLoading ? 'Sending...' : 'Send via Email'}
-                    </button>
-                  </>
-                )}
-
-                {/* Copy Link */}
-                <div className="share-divider">
-                  <span>or copy link</span>
-                </div>
-
-                <button
-                  className="share-copy-btn"
-                  onClick={handleCopyLink}
-                >
-                  {linkCopied ? <><FiCheckCircle size={14} /> Link Copied!</> : <><FiCopy size={14} /> Copy Image Link</>}
+              <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+                <button className="copy-link-btn" onClick={handleCopyLink}>
+                  {linkCopied ? <><FiCheckCircle /> Copied!</> : <><FiCopy /> Copy Link</>}
                 </button>
-
-                <p className="share-disclaimer">
-                  🔒 Your information is safe and will only be used for this service
-                </p>
               </div>
+
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      <footer className="wizard-footer">
-        <p>Made with ❤️ for Mother's Day • Kellogg's {new Date().getFullYear()}</p>
-      </footer>
     </div>
   );
 }
