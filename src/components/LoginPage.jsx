@@ -3,6 +3,7 @@ import { FiArrowLeft, FiLock, FiMail, FiPhone, FiCheck, FiRefreshCw } from 'reac
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import './LoginPage.css';
+import kelloggsLogo from '../assets/kelloggs-logo.png';
 
 const API_URL = 'http://localhost:5000';
 
@@ -30,6 +31,28 @@ const LoginPage = ({ onBack, onLogin }) => {
       }
     };
   }, []);
+  
+  // WebOTP API for Automatic SMS Detection
+  useEffect(() => {
+    if ('OTPCredential' in window && step === 'otp') {
+      const ac = new AbortController();
+      
+      navigator.credentials.get({
+        otp: { transport: ['sms'] },
+        signal: ac.signal
+      }).then(otp => {
+        setOtp(otp.code);
+        // Optional: Auto-submit if we're confident
+        // onLogin(identifier); 
+      }).catch(err => {
+        console.log('WebOTP Error:', err);
+      });
+      
+      return () => {
+        ac.abort();
+      };
+    }
+  }, [step]);
 
   const handleGoogleLogin = () => {
     if (!window.google || !GOOGLE_CLIENT_ID) {
@@ -137,7 +160,7 @@ const LoginPage = ({ onBack, onLogin }) => {
         <button className="back-btn" onClick={onBack}>
           <FiArrowLeft /> Back
         </button>
-        <div className="login-logo">Kellogg's</div>
+        <img src={kelloggsLogo} alt="Kellogg's" className="login-logo" />
       </header>
 
       <div className="login-container">

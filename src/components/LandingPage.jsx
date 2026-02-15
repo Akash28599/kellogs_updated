@@ -1,6 +1,7 @@
 import React from 'react';
 import './LandingPage.css';
-import heroImage from '../assets/hero-replacement.png';
+import kelloggsLogo from '../assets/kelloggs-logo.png';
+import heroImage from '../assets/Website banner bottom.png';
 
 const LandingPage = ({ onStart }) => {
   return (
@@ -8,7 +9,7 @@ const LandingPage = ({ onStart }) => {
 
       {/* ============ NAVBAR ============ */}
       <nav className="landing-nav">
-        <div className="landing-nav-logo">Kellogg's</div>
+        <img src={kelloggsLogo} alt="Kellogg's" className="landing-nav-logo" />
         <button className="landing-nav-btn" onClick={onStart}>
           Get Started
         </button>
@@ -26,23 +27,23 @@ const LandingPage = ({ onStart }) => {
 
         {/* Hero Content */}
         <div className="hero-content">
-          <div className="hero-badge">
-            <span className="hero-badge-icon">✦</span>
-            Powered by AI Technology
-          </div>
+          {/* Badge Removed */}
 
           <h1 className="hero-title">
-            Turn Your Mom Into a
-            <span className="hero-title-highlight">Superhero</span>
+            Gift your mum an exclusive
+            <span className="hero-title-highlight"> luxury spa experience</span>
           </h1>
 
           <p className="hero-subtitle">
-            Celebrate the everyday heroes in our lives. Transform photos into 
-            amazing superhero portraits with Kellogg's!
+            This Mother's Day, Kellogg's Nigeria is celebrating mums with the rest they truly deserve 
+            through the My Mum, My Superhero contest.
           </p>
 
+          <p className="hero-reward-label">REWARD</p>
+          <h3 className="hero-reward-text">20 MUMS. ONE EXCLUSIVE SPA EXPERIENCE.</h3>
+
           <button className="hero-cta" onClick={onStart}>
-            Create Your Superhero Now
+            Create your Mom Hero Character
             <span className="hero-cta-arrow">→</span>
           </button>
         </div>
@@ -134,24 +135,14 @@ const LandingPage = ({ onStart }) => {
         </div>
       </section>
 
-      {/* ============ READY TO CREATE CTA ============ */}
-      <section className="section-cta">
-        <span className="cta-star cta-star-1">⭐</span>
-        <span className="cta-star cta-star-2">⭐</span>
-        <h2>Ready to Create Your Superhero?</h2>
-        <p>Join thousands celebrating their everyday heroes with Kellogg's</p>
-        <button className="cta-btn" onClick={onStart}>
-          Get Started Now
-          <span>→</span>
-        </button>
-      </section>
+      {/* CTA Section Removed per request */}
 
       {/* ============ FOOTER ============ */}
       <footer className="landing-footer">
         <div className="footer-grid">
           {/* Brand Column */}
           <div className="footer-brand">
-            <div className="footer-brand-logo">Kellogg's</div>
+            <img src={kelloggsLogo} alt="Kellogg's" className="footer-brand-logo" />
             <p className="footer-brand-desc">
               Celebrate the everyday superhero in your life. Transform your mom's photo into amazing superhero art with our AI-powered platform.
             </p>

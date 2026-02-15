@@ -9,6 +9,7 @@ import './App.css';
 import './Wizard.css';
 import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
+import kelloggsLogo from './assets/kelloggs-logo.png';
 
 const API_URL = 'http://localhost:5000';
 
@@ -99,10 +100,11 @@ function AppContent() {
   const [shareLoading, setShareLoading] = useState(false);
   const [shareSuccess, setShareSuccess] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
+  const [isFallback, setIsFallback] = useState(false); // Track if fallback template is used
 
   // Navigation
   const handleStartData = () => {
-    setViewState('login');
+    setViewState('wizard');
     window.scrollTo(0, 0);
   };
 
@@ -197,18 +199,21 @@ function AppContent() {
 
   // Generate face swap — called from Step 3 (Write Story) now
   const handleGenerate = async () => {
+    console.log('Generating started...');
     if (!selectedTheme || !uploadedFile) {
       setError('Please select a theme and upload an image.');
       return;
     }
 
     setIsLoading(true);
-    setCurrentStep(4); // Loading step
+    setCurrentStep(3); // Loading step (Step 3)
     setLoadingMessage('Preparing your superhero transformation...');
     setError('');
+    setIsFallback(false);
 
     try {
       setLoadingMessage('Working magic with AI face swap...');
+      console.log('Sending API request...');
       
       const response = await axios.post(`${API_URL}/api/face-swap`, {
         sourceImage: uploadedFile.path,
@@ -216,27 +221,54 @@ function AppContent() {
         story: momStory // send story along
       }, { timeout: 120000 });
 
+      console.log('API Response:', response.data);
+
       if (response.data.success) {
         setResultImage(`${API_URL}${response.data.result.imageUrl}`);
         setResultBlobUrl(response.data.result.blobUrl || '');
-        setCurrentStep(5); // Result step
+        setCurrentStep(4); // Result step (Step 4)
+      } else {
+        throw new Error(response.data.message || 'Generation failed');
       }
     } catch (err) {
-      if (err.code === 'ECONNABORTED') {
-        setError('The grid is busy. Please try again in a moment. (Timeout)');
+      console.error('Generation Error:', err);
+      
+      // FALLBACK: Always produce an image (Use Template)
+      if (selectedTheme && selectedTheme.templateUrl) {
+         console.log('Using template fallback...');
+         setResultImage(`${API_URL}${selectedTheme.templateUrl}`);
+         setResultBlobUrl(''); 
+         setIsFallback(true);
+         setCurrentStep(4); // Go to Result
       } else {
-        setError(err.response?.data?.message || 'Face swap failed. Please try again.');
+         setError('Transformation failed. Please try a different photo.');
+         setCurrentStep(2);
       }
-      setCurrentStep(3); // Back to story step on error
     } finally {
-      setIsLoading(false);
       setLoadingMessage('');
+      setIsLoading(false);
+    }
+  };
+
+  // Login Return Handler
+  const handleLoginBack = () => {
+    // If we have a result, just close login overlay (go back to wizard)
+    if (resultImage) {
+      setViewState('wizard');
+    } else {
+      setViewState('landing');
     }
   };
 
   // Download result
   const handleDownload = async () => {
     if (!resultImage) return;
+
+    // Login check
+    if (!userEmail) {
+      setViewState('login');
+      return;
+    }
     
     try {
       const response = await fetch(resultImage);
@@ -262,6 +294,12 @@ function AppContent() {
 
   // WhatsApp share handler
   const handleWhatsAppShare = async (withPhone = false) => {
+    // Login check
+    if (!userEmail) {
+      setViewState('login');
+      return;
+    }
+
     const urlToShare = resultBlobUrl || resultImage;
     setShareLoading(true);
     setShareSuccess('');
@@ -346,41 +384,42 @@ function AppContent() {
   };
 
   // Conditional Rendering
-  if (viewState === 'login') {
-    return <LoginPage onBack={handleBackToLanding} onLogin={handleLoginSuccess} />;
-  }
-
-  if (viewState === 'landing') {
-    return (
-      <div className="app" style={{ background: 'transparent' }}>
-        <main className="main" style={{ width: '100%', height: '100%' }}>
-          <LandingPage onStart={handleStartData} />
-        </main>
-      </div>
-    );
-  }
-
   // WIZARD VIEW
-  // Updated: 5 steps now
-  const stepLabels = ['Upload Photo', 'Select Theme', 'Write Her Story', 'Generating', 'Result'];
+  // Updated: 4 steps now (Combined Upload + Story)
+  const stepLabels = ['Upload & Story', 'Select Theme', 'Generating', 'Result'];
   
   // Handle back navigation per step
   const handleBack = () => {
     if (currentStep === 1) {
       handleGoHome();
-    } else if (currentStep <= 3) {
+    } else if (currentStep === 4) {
+      setCurrentStep(2); // Back to Theme Selection
+    } else {
       setCurrentStep(currentStep - 1);
     }
   };
 
   return (
     <div className="app-wizard">
+      {/* Login Overlay - Preserves State */}
+      {viewState === 'login' && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: '#fff' }}>
+          <LoginPage onBack={handleLoginBack} onLogin={handleLoginSuccess} />
+        </div>
+      )}
+
+      {/* Landing Page View */}
+      {viewState === 'landing' && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: '#fff', overflowY: 'auto' }}>
+           <LandingPage onStart={handleStartData} />
+        </div>
+      )}
       {/* ---- Wizard Header ---- */}
       <header className="wizard-header">
         <button className="wizard-back-btn" onClick={handleBack}>
           <FiArrowLeft /> Back
         </button>
-        <div className="kelloggs-logo">Kellogg's</div>
+        <img src={kelloggsLogo} alt="Kellogg's" className="kelloggs-logo" />
         <div className="wizard-step-indicator">
           <span className="wizard-step-badge">{currentStep}</span>
           <span>{stepLabels[currentStep - 1]}</span>
@@ -455,6 +494,30 @@ function AppContent() {
                 </ul>
               </div>
 
+              <div className="story-section" style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '24px' }}>
+                <h3 className="story-title" style={{ fontFamily: 'Poppins', fontWeight: '800', marginBottom: '12px' }}>
+                  Write Her Story <span style={{ fontSize: '0.9rem', fontWeight: '400', color: '#888' }}>(Optional)</span>
+                </h3>
+                <div className="story-textarea-wrapper">
+                  <textarea
+                    className="story-textarea"
+                    placeholder="What makes your mom a superhero? Share a short message (max 150 words)..."
+                    value={momStory}
+                    onChange={(e) => {
+                      const words = e.target.value.trim().split(/\s+/);
+                      if (e.target.value.trim() === '' || words.length <= 150) {
+                        setMomStory(e.target.value);
+                      }
+                    }}
+                    rows={4}
+                    style={{ width: '100%', padding: '12px', borderRadius: '12px', borderColor: '#ddd', fontFamily: 'Inter' }}
+                  />
+                  <div className="story-word-count" style={{ textAlign: 'right', fontSize: '0.8rem', color: '#888', marginTop: '4px' }}>
+                    {getWordCount(momStory)} / 150 words
+                  </div>
+                </div>
+              </div>
+
               {uploadedFile && (
                 <div style={{ marginTop: '28px' }}>
                   <button 
@@ -516,95 +579,25 @@ function AppContent() {
                 <button 
                   className="btn-kelloggs"
                   disabled={!selectedTheme}
-                  onClick={() => setCurrentStep(3)}
+                  onClick={handleGenerate}
                 >
-                  Next: Write Her Story <FiCheck />
+                  Generate Super Mom <FiZap />
                 </button>
               </div>
             </motion.div>
           )}
 
-          {/* STEP 3: WRITE HER STORY (NEW) */}
+          {/* STEP 3: LOADING / GENERATING (Renumbered from 4) */}
           {currentStep === 3 && (
             <motion.div
-              key="step3-story"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-            >
-              <div className="story-step">
-                <div className="story-icon">✨</div>
-                <h2 className="upload-page-title">Tell Us About <span className="title-red">Your Mom</span></h2>
-                <p className="upload-page-subtitle">Share what makes her special in 150 words or less</p>
-
-                {error && (
-                  <div style={{ color: '#F60945', marginBottom: '1rem', padding: '12px 16px', background: '#FFF0F3', borderRadius: '12px', fontSize: '0.9rem' }}>
-                    {error}
-                  </div>
-                )}
-
-                <div className="story-textarea-wrapper">
-                  <textarea
-                    className="story-textarea"
-                    placeholder="Write about your mom... What makes her special? Share her superpowers, her love, her sacrifices, or a favorite memory. Let the world know why she's your hero!"
-                    value={momStory}
-                    onChange={(e) => {
-                      const words = e.target.value.trim().split(/\s+/);
-                      if (e.target.value.trim() === '' || words.length <= 150) {
-                        setMomStory(e.target.value);
-                      }
-                    }}
-                    rows={6}
-                  />
-                  <div className="story-word-count">
-                    {getWordCount(momStory)} / 150 words
-                  </div>
-                </div>
-
-                <p className="story-helper-text">
-                  ✏️ {getWordCount(momStory) === 0 ? 'Start writing to see your word count' : `${getWordCount(momStory)} word${getWordCount(momStory) !== 1 ? 's' : ''} written`}
-                </p>
-
-                {/* Writing Tips */}
-                <div className="writing-tips-card">
-                  <div className="writing-tips-title">💡 Writing Tips</div>
-                  <ul>
-                    <li>Share a <strong>special memory</strong> or moment that shows her love</li>
-                    <li>Describe her unique <strong>superpowers</strong> (cooking, advice, humor, etc.)</li>
-                    <li>Express what she <strong>means to you</strong> and your family</li>
-                    <li>Keep it heartfelt and genuine - <strong>authenticity matters!</strong></li>
-                  </ul>
-                </div>
-
-                <div style={{ marginTop: '28px', textAlign: 'center' }}>
-                  <button 
-                    className="btn-kelloggs"
-                    disabled={getWordCount(momStory) < 1}
-                    onClick={handleGenerate}
-                  >
-                    Continue to Generate <FiZap />
-                  </button>
-                  {getWordCount(momStory) < 1 && (
-                    <p style={{ color: '#F60945', fontSize: '0.85rem', marginTop: '8px' }}>
-                      Please write at least 1 word to continue
-                    </p>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* STEP 4: LOADING / GENERATING */}
-          {currentStep === 4 && (
-            <motion.div
-              key="step4-loading"
+              key="step3-loading"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               style={{ position: 'fixed', inset: 0, zIndex: 100 }}
             >
               <div className="loading-view">
                 <div className="loading-header">
-                  <div className="kelloggs-logo">Kellogg's</div>
+                  <img src={kelloggsLogo} alt="Kellogg's" className="kelloggs-logo" />
                 </div>
 
                 <span className="loading-sparkle" style={{ top: '15%', left: '12%', fontSize: '1.2rem', color: '#FFC700' }}>✦</span>
@@ -657,87 +650,125 @@ function AppContent() {
             </motion.div>
           )}
 
-          {/* STEP 5: RESULT */}
-          {currentStep === 5 && resultImage && (
+          {/* STEP 4: RESULT (Greeting Card) */}
+          {currentStep === 4 && resultImage && (
             <motion.div
-              key="step5-result"
+              key="step4-result"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <div className="result-page">
-                <h2 className="result-title">Meet Your <span className="title-red">Super Mom</span>!</h2>
-                <p className="result-subtitle">Here's your AI-generated superhero transformation</p>
+              <div className="result-page" style={{ maxWidth: '1000px', padding: '0 20px 40px' }}>
+                <h2 className="result-title">Here is your <span className="title-red">Kellogg's Card</span>!</h2>
+                <p className="result-subtitle">Download or Share this special card with your Super Mom</p>
 
-                {/* Theme info banner */}
-                {selectedTheme && (
-                  <div className="result-theme-banner">
-                    <div className="result-theme-icon">
-                      {(() => {
-                        const IconComponent = themeIcons[selectedTheme.id] || GiAlarmClock;
-                        return <IconComponent size={28} color="#F60945" />;
-                      })()}
-                    </div>
-                    <div className="result-theme-name">{selectedTheme.title}</div>
-                    <div className="result-theme-desc">{selectedTheme.subtitle}</div>
+                {/* Greeting Card Container */}
+                {isFallback && (
+                  <div style={{ textAlign: 'center', marginBottom: '20px', background: '#fff3cd', color: '#856404', padding: '15px', borderRadius: '8px', border: '1px solid #ffeeba' }}>
+                    <strong>⚠️ High Traffic Notice</strong>
+                    <p style={{ margin: '5px 0', fontSize: '0.9rem' }}>The AI is currently busy, so we're showing a preview template.</p>
+                    <button 
+                      onClick={handleGenerate} 
+                      style={{ 
+                        background: '#F60945', 
+                        color: '#fff', 
+                        border: 'none', 
+                        padding: '8px 16px', 
+                        borderRadius: '20px', 
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        marginTop: '5px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <FiRefreshCw /> Try AI Again
+                    </button>
                   </div>
                 )}
-
-                {/* Side-by-side photos */}
-                <div className="result-photos">
-                  <div className="result-photo-card">
-                    <div className="result-photo-label original">Original Photo</div>
-                    <img src={uploadedImage} alt="Original" />
+                <div className="greeting-card-container">
+                  {/* Left Side: Generated Image */}
+                  <div className="card-image-side">
+                    <img 
+                      src={resultImage} 
+                      alt="Super Mom" 
+                    />
+                    <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '10px', padding: '4px 8px', borderRadius: '4px' }}>
+                      AI Generated
+                    </div>
                   </div>
-                  <div className="result-photo-card">
-                    <div className="result-photo-label ai-generated">AI - Generated</div>
-                    <img src={resultImage} alt="Superhero Result" />
+
+                  {/* Right Side: Message & Branding */}
+                  <div className="card-message-side">
+                    {/* Corner Decorations */}
+                    <div style={{ position: 'absolute', top: '0', right: '0', width: '60px', height: '60px', background: 'linear-gradient(135deg, transparent 50%, #F60945 50%)', opacity: 0.1 }}></div>
+                    <div style={{ position: 'absolute', bottom: '0', left: '0', width: '60px', height: '60px', background: 'linear-gradient(135deg, #F60945 50%, transparent 50%)', opacity: 0.1 }}></div>
+
+                    <img 
+                      src={kelloggsLogo} 
+                      alt="Kellogg's" 
+                      style={{ width: '120px', marginBottom: '24px' }} 
+                    />
+
+                    <h3 style={{ 
+                      fontFamily: 'Poppins, sans-serif', 
+                      fontWeight: '800', 
+                      fontSize: '1.4rem', 
+                      color: '#F60945', 
+                      marginBottom: '16px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px'
+                    }}>
+                      Happy Mother's Day!
+                    </h3>
+
+                    <div style={{ 
+                      width: '60px', 
+                      height: '4px', 
+                      background: '#FFC700', 
+                      marginBottom: '24px', 
+                      borderRadius: '2px' 
+                    }}></div>
+
+                    <p style={{ 
+                      fontFamily: 'Caveat, cursive', // Assuming a handwritten font availability or fallback
+                      fontSize: '1.2rem', 
+                      color: '#444', 
+                      lineHeight: '1.6', 
+                      fontStyle: 'italic',
+                      marginBottom: '30px',
+                      maxWidth: '85%'
+                    }}>
+                      "{momStory || "To the world you are a mother, but to our family you are a superhero. Thank you for everything you do!"}"
+                    </p>
+
+                    <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#F60945' }}>
+                      #KelloggsSuperMom
+                    </div>
                   </div>
                 </div>
 
                 {/* Buttons */}
                 <div className="result-buttons">
                   <button className="result-btn primary" onClick={handleDownload}>
-                    <FiDownload size={14} /> DOWNLOAD IMAGE
+                     <FiDownload size={16} /> DOWNLOAD CARD
                   </button>
-                  <button className="result-btn whatsapp" onClick={() => { setShowShareModal(true); setShareTab('whatsapp'); }}>
-                    <IoLogoWhatsapp size={16} /> SHARE ON WHATSAPP
+                  <button className="result-btn whatsapp" onClick={() => { 
+                    if (!userEmail) { setViewState('login'); return; }
+                    setShowShareModal(true); 
+                    setShareTab('whatsapp'); 
+                  }}>
+                    <IoLogoWhatsapp size={18} /> SHARE CARD
                   </button>
-                  <button className="result-btn" onClick={() => { setShowShareModal(true); setShareTab('email'); }}>
-                    <FiShare2 size={14} /> MORE SHARE OPTIONS
+                  <button className="result-btn" onClick={() => { 
+                    if (!userEmail) { setViewState('login'); return; }
+                    setShowShareModal(true); 
+                    setShareTab('email'); 
+                  }}>
+                     <FiShare2 size={16} /> MORE OPTIONS
                   </button>
                   <button className="result-btn" onClick={handleReset}>
-                    <FiRefreshCw size={14} /> TRY ANOTHER PHOTO
-                  </button>
-                </div>
-
-                {/* Superhero Features */}
-                <div className="result-features">
-                  <h3 className="result-features-title">Superhero Features Added</h3>
-                  <div className="result-features-grid">
-                    <div className="result-feature-item">
-                      <div className="result-feature-icon">🦸</div>
-                      <div className="result-feature-name">Hero Costume</div>
-                      <div className="result-feature-desc">Bold colors and iconic superhero outfit</div>
-                    </div>
-                    <div className="result-feature-item">
-                      <div className="result-feature-icon">💪</div>
-                      <div className="result-feature-name">Dynamic Pose</div>
-                      <div className="result-feature-desc">Confident, powerful superhero stance</div>
-                    </div>
-                    <div className="result-feature-item">
-                      <div className="result-feature-icon">✨</div>
-                      <div className="result-feature-name">Cape & Details</div>
-                      <div className="result-feature-desc">Flowing cape and heroic accessories</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* CTA */}
-                <div className="result-cta">
-                  <h3 className="result-cta-title">Love the result? Create more!</h3>
-                  <p className="result-cta-desc">Transform more photos and share the superhero magic with family</p>
-                  <button className="result-cta-btn" onClick={handleReset}>
-                    CREATE ANOTHER SUPER MOM
+                    <FiRefreshCw size={14} /> NEW CARD
                   </button>
                 </div>
               </div>
