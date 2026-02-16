@@ -5,6 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
+const { createGreetingCard } = require('./utility/cardGenerator');
 const { spawn } = require('child_process');
 const sharp = require('sharp');
 // Manual .env load
@@ -823,8 +824,12 @@ const processJob = async (job) => {
 
     const theme = { id: targetThemeId, template: templateFilename };
     const sourceImagePath = path.join(__dirname, sourceImage.replace(/^\//, ''));
-    const resultFileName = `result_${jobId}.png`; // Use JobID in filename
+    const resultFileName = `result_${jobId}.jpg`; // Card Output (JPG default for sharp)
     const resultPath = path.join(__dirname, 'results', resultFileName);
+
+    // Intermediate Swap Image
+    const swapFileName = `swap_${jobId}.png`;
+    const swapPath = path.join(__dirname, 'results', swapFileName);
 
     // Validate Source
     if (!fs.existsSync(sourceImagePath)) {
@@ -836,7 +841,10 @@ const processJob = async (job) => {
     // Fast Path: Demo Mode (No Python)
     if (!PYTHON_AVAILABLE) {
       console.log('⚠️ Python missing. Using fallback copy.');
-      fs.copyFileSync(templatePath, resultPath);
+      fs.copyFileSync(templatePath, swapPath);
+
+      // Create Card from Fallback
+      await createGreetingCard(swapPath, story, resultPath);
 
       // Success (Demo)
       const result = {
@@ -859,7 +867,7 @@ const processJob = async (job) => {
       '-3.10', scriptPath,
       '--source', sourceImagePath,
       '--target', templatePath,
-      '--output', resultPath,
+      '--output', swapPath, // Output is now SWAP path, not result path
       '--cpu'
     ];
 
@@ -878,8 +886,16 @@ const processJob = async (job) => {
     pythonProcess.on('close', async (code) => {
       clearTimeout(pythonTimeout);
 
-      if (code === 0 && fs.existsSync(resultPath)) {
-        // Azure Upload
+      if (code === 0 && fs.existsSync(swapPath)) {
+
+        // Generate Greeting Card (Final Output)
+        console.log(`🎨 Creating Greeting Card for Job ${jobId}...`);
+        await createGreetingCard(swapPath, story, resultPath);
+
+        // Cleanup intermediate swap
+        try { if (fs.existsSync(swapPath)) fs.unlinkSync(swapPath); } catch (e) { }
+
+        // Azure Upload (Upload the CARD)
         let blobUrl = null;
         if (blobContainerClient) {
           try {
@@ -903,18 +919,25 @@ const processJob = async (job) => {
 
       } else {
         console.log(`Job ${jobId} Python failed. Using fallback.`);
-        // Fallback Copy
+        // Fallback: Use Template + Story -> Card
         try {
-          if (!fs.existsSync(resultPath)) fs.copyFileSync(templatePath, resultPath);
+          if (!fs.existsSync(swapPath)) fs.copyFileSync(templatePath, swapPath);
+
+          // Create Card from Template
+          await createGreetingCard(swapPath, story, resultPath);
+
           const result = {
             imageUrl: `/results/${resultFileName}`,
             theme: theme,
             demo: true,
-            note: 'AI failed, using template fallback'
+            note: 'AI failed, using template card'
           };
+
           jobStore.set(jobId, { status: 'completed', result });
           await recordSubmission(job, `/results/${resultFileName}`, null, 'completed');
+
         } catch (e) {
+          console.error("Fallback Error:", e);
           jobStore.set(jobId, { status: 'failed', error: 'Processing failed completely' });
         }
       }

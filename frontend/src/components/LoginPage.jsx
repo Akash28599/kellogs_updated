@@ -11,7 +11,7 @@ const API_URL = 'http://localhost:5000';
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 const LoginPage = ({ onBack, onLogin }) => {
-  const [activeTab, setActiveTab] = useState('email');
+  const [activeTab, setActiveTab] = useState('phone');
   const [identifier, setIdentifier] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState('identifier');
@@ -45,7 +45,10 @@ const LoginPage = ({ onBack, onLogin }) => {
         // Optional: Auto-submit if we're confident
         // onLogin(identifier); 
       }).catch(err => {
-        console.log('WebOTP Error:', err);
+        // Silently fail for unsupported devices (Desktop/iOS)
+        if (err.name !== 'InvalidStateError') {
+             console.debug('WebOTP Auto-read skipped:', err.message);
+        }
       });
       
       return () => {
@@ -110,6 +113,11 @@ const LoginPage = ({ onBack, onLogin }) => {
       });
 
       if (response.data.success) {
+        // Dev Mode Helper: Show OTP immediately
+        if (response.data.debugOtp) {
+             console.log("🐛 DEBUG OTP:", response.data.debugOtp);
+             alert(`DEBUG MODE: Your OTP is ${response.data.debugOtp}`);
+        }
         setStep('otp');
       } else {
         setError(response.data.message || 'Failed to send OTP.');
@@ -184,22 +192,7 @@ const LoginPage = ({ onBack, onLogin }) => {
                 : <>We sent a code to <span>{identifier}</span></>}
             </p>
 
-            {step === 'identifier' && (
-              <div className="auth-tabs">
-                <button 
-                  className={`tab ${activeTab === 'email' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('email')}
-                >
-                  Email
-                </button>
-                <button 
-                  className={`tab ${activeTab === 'phone' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('phone')}
-                >
-                  Phone
-                </button>
-              </div>
-            )}
+
 
             {error && (
               <div className="error-message" style={{ color: '#F60945', background: '#FFF0F3', padding: '10px', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem', textAlign: 'center' }}>
@@ -230,13 +223,8 @@ const LoginPage = ({ onBack, onLogin }) => {
                   </button>
                 </form>
 
-                {/* OR Divider */}
-                <div className="login-divider">
-                  <span>or</span>
-                </div>
-
                 {/* Google Sign-In Button */}
-                <button className="btn-google" onClick={handleGoogleLogin} disabled={loading}>
+                <button className="btn-google" onClick={handleGoogleLogin} disabled={loading} style={{ marginTop: '1rem' }}>
                   <svg width="18" height="18" viewBox="0 0 48 48">
                     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
                     <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
@@ -245,6 +233,17 @@ const LoginPage = ({ onBack, onLogin }) => {
                   </svg>
                   Continue with Google
                 </button>
+
+                {/* Switch to Email/Phone Link */}
+                <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.9rem', color: '#666' }}>
+                    <span>{activeTab === 'phone' ? 'Prefer email?' : 'Prefer phone?'} </span>
+                    <button 
+                        onClick={() => handleTabChange(activeTab === 'phone' ? 'email' : 'phone')}
+                        style={{ background: 'none', border: 'none', color: '#F60945', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline' }}
+                    >
+                        {activeTab === 'phone' ? 'Login with Email' : 'Login with Phone'}
+                    </button>
+                </div>
               </>
             ) : (
               <form onSubmit={handleVerifyOtp}>

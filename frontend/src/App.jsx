@@ -726,66 +726,12 @@ function AppContent() {
                     </button>
                   </div>
                 )}
-                <div className="greeting-card-container">
-                  {/* Left Side: Generated Image */}
-                  <div className="card-image-side">
+                <div className="greeting-card-container" style={{ display: 'block', padding: 0, background: 'transparent', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', borderRadius: '16px', overflow: 'hidden' }}>
                     <img 
                       src={resultImage} 
-                      alt="Super Mom" 
+                      alt="Super Mom Card" 
+                      style={{ width: '100%', height: 'auto', display: 'block' }}
                     />
-                    <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '10px', padding: '4px 8px', borderRadius: '4px' }}>
-                      AI Generated
-                    </div>
-                  </div>
-
-                  {/* Right Side: Message & Branding */}
-                  <div className="card-message-side">
-                    {/* Corner Decorations */}
-                    <div style={{ position: 'absolute', top: '0', right: '0', width: '60px', height: '60px', background: 'linear-gradient(135deg, transparent 50%, #F60945 50%)', opacity: 0.1 }}></div>
-                    <div style={{ position: 'absolute', bottom: '0', left: '0', width: '60px', height: '60px', background: 'linear-gradient(135deg, #F60945 50%, transparent 50%)', opacity: 0.1 }}></div>
-
-                    <img 
-                      src={kelloggsLogo} 
-                      alt="Kellogg's" 
-                      style={{ width: '120px', marginBottom: '24px' }} 
-                    />
-
-                    <h3 style={{ 
-                      fontFamily: 'Poppins, sans-serif', 
-                      fontWeight: '800', 
-                      fontSize: '1.4rem', 
-                      color: '#F60945', 
-                      marginBottom: '16px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '1px'
-                    }}>
-                      Happy Mother's Day!
-                    </h3>
-
-                    <div style={{ 
-                      width: '60px', 
-                      height: '4px', 
-                      background: '#FFC700', 
-                      marginBottom: '24px', 
-                      borderRadius: '2px' 
-                    }}></div>
-
-                    <p style={{ 
-                      fontFamily: 'Caveat, cursive', // Assuming a handwritten font availability or fallback
-                      fontSize: '1.2rem', 
-                      color: '#444', 
-                      lineHeight: '1.6', 
-                      fontStyle: 'italic',
-                      marginBottom: '30px',
-                      maxWidth: '85%'
-                    }}>
-                      "{momStory || "To the world you are a mother, but to our family you are a superhero. Thank you for everything you do!"}"
-                    </p>
-
-                    <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#F60945' }}>
-                      #KelloggsSuperMom
-                    </div>
-                  </div>
                 </div>
 
                 {/* Buttons */}
@@ -838,89 +784,123 @@ function AppContent() {
               <button className="share-modal-close" onClick={() => setShowShareModal(false)}>
                 <FiX size={20} />
               </button>
-              
-              <h3 className="share-modal-title">Share Your Card</h3>
-              
+
+              <div className="share-modal-icon">🔗</div>
+              <h3 className="share-modal-title">Share Your Super Mom</h3>
+              <p className="share-modal-subtitle">Choose how you want to share your creation</p>
+
+              {/* Tab Switcher */}
               <div className="share-tabs">
-                <button 
+                <button
                   className={`share-tab ${shareTab === 'whatsapp' ? 'active' : ''}`}
                   onClick={() => setShareTab('whatsapp')}
                 >
-                  <IoLogoWhatsapp /> WhatsApp
+                  <IoLogoWhatsapp size={16} /> WhatsApp
                 </button>
-                <button 
+                <button
                   className={`share-tab ${shareTab === 'email' ? 'active' : ''}`}
                   onClick={() => setShareTab('email')}
                 >
-                  <FiMail /> Email
+                  <FiMail size={16} /> Email
                 </button>
               </div>
 
-              <div className="share-content">
-                {shareTab === 'whatsapp' && (
-                  <div className="share-form">
-                    <p>Enter phone number (with country code):</p>
-                    <input 
-                      type="tel" 
-                      placeholder="+234..." 
-                      className="share-input"
-                      value={sharePhone}
-                      onChange={(e) => setSharePhone(e.target.value)}
-                    />
-                    <button 
-                      className="share-btn whatsapp"
-                      disabled={shareLoading}
-                      onClick={() => handleWhatsAppShare(true)}
-                    >
-                      {shareLoading ? 'Opening...' : 'Send via WhatsApp'}
-                    </button>
-                    <div className="share-divider">OR</div>
-                    <button 
-                      className="share-btn outline"
-                      onClick={() => handleWhatsAppShare(false)}
-                    >
-                      Share with Contacts
-                    </button>
-                  </div>
-                )}
-
-                {shareTab === 'email' && (
-                  <div className="share-form">
-                    <p>Enter email address:</p>
-                    <input 
-                      type="email" 
-                      placeholder="mom@example.com" 
-                      className="share-input"
-                      value={shareEmail}
-                      onChange={(e) => setShareEmail(e.target.value)}
-                    />
-                    <button 
-                      className="share-btn primary"
-                      disabled={shareLoading}
-                      onClick={handleEmailShare}
-                    >
-                      {shareLoading ? 'Sending...' : 'Send Email'} <FiZap />
-                    </button>
-                  </div>
-                )}
-              </div>
-
+              {/* Success Message */}
               {shareSuccess && (
-                <div style={{ marginTop: '15px', color: 'green', fontWeight: 'bold', textAlign: 'center' }}>
-                  {shareSuccess}
+                <div className="share-success-msg">
+                  <FiCheckCircle size={16} /> {shareSuccess}
                 </div>
               )}
 
-              <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
-                <button className="copy-link-btn" onClick={handleCopyLink}>
-                  {linkCopied ? <><FiCheckCircle /> Copied!</> : <><FiCopy /> Copy Link</>}
-                </button>
-              </div>
+              <div className="share-form">
+                {/* WhatsApp Tab */}
+                {shareTab === 'whatsapp' && (
+                  <>
+                    <div className="share-quick-action">
+                      <button
+                        className="share-whatsapp-direct-btn"
+                        onClick={() => handleWhatsAppShare(false)}
+                        disabled={shareLoading}
+                      >
+                        <IoLogoWhatsapp size={20} />
+                        {shareLoading ? 'Opening...' : 'Share on WhatsApp Now'}
+                      </button>
+                      <p style={{ fontSize: '0.82rem', color: '#888', marginTop: '8px' }}>Opens WhatsApp with your image link ready to send</p>
+                    </div>
 
+                    <div className="share-divider">
+                      <span>or send to a specific number</span>
+                    </div>
+
+                    <div className="share-input-group">
+                      <label><FiPhone size={14} /> WhatsApp Number</label>
+                      <input
+                        type="tel"
+                        placeholder="+234 800 000 0000"
+                        value={sharePhone}
+                        onChange={(e) => setSharePhone(e.target.value)}
+                      />
+                    </div>
+
+                    <button
+                      className="share-submit-btn whatsapp-btn"
+                      onClick={() => handleWhatsAppShare(true)}
+                      disabled={!sharePhone || shareLoading}
+                    >
+                      <IoLogoWhatsapp size={16} />
+                      {shareLoading ? 'Sending...' : 'Send to This Number'}
+                    </button>
+                  </>
+                )}
+
+                {/* Email Tab */}
+                {shareTab === 'email' && (
+                  <>
+                    <div className="share-input-group">
+                      <label><FiMail size={14} /> Recipient Email <span style={{ color: '#F60945' }}>*</span></label>
+                      <input
+                        type="email"
+                        placeholder="mom@email.com"
+                        value={shareEmail}
+                        onChange={(e) => setShareEmail(e.target.value)}
+                      />
+                    </div>
+
+                    <button
+                      className="share-submit-btn"
+                      onClick={handleEmailShare}
+                      disabled={!shareEmail || shareLoading}
+                    >
+                      <FiMail size={16} />
+                      {shareLoading ? 'Sending...' : 'Send via Email'}
+                    </button>
+                  </>
+                )}
+
+                {/* Copy Link */}
+                <div className="share-divider">
+                  <span>or copy link</span>
+                </div>
+
+                <button
+                  className="share-copy-btn"
+                  onClick={handleCopyLink}
+                >
+                  {linkCopied ? <><FiCheckCircle size={14} /> Link Copied!</> : <><FiCopy size={14} /> Copy Image Link</>}
+                </button>
+
+                <p className="share-disclaimer">
+                  🔒 Your information is safe and will only be used for this service
+                </p>
+              </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <footer className="wizard-footer">
+        <p>Made with ❤️ for Mother's Day • Kellogg's {new Date().getFullYear()}</p>
+      </footer>
     </div>
   );
 }
