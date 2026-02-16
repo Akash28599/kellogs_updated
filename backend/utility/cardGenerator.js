@@ -8,7 +8,7 @@ const fs = require('fs');
 function wrapText(text, maxCharsPerLine) {
     const words = text.split(' ');
     let lines = [];
-    let currentLine = words[0];
+    let currentLine = words[0] || '';
 
     for (let i = 1; i < words.length; i++) {
         if (currentLine.length + 1 + words[i].length <= maxCharsPerLine) {
@@ -18,19 +18,30 @@ function wrapText(text, maxCharsPerLine) {
             currentLine = words[i];
         }
     }
-    lines.push(currentLine);
+    if (currentLine) lines.push(currentLine);
     return lines;
+}
+
+/**
+ * Escapes special XML characters for SVG text content.
+ */
+function escapeXml(text) {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
 }
 
 /**
  * Generates a Greeting Card combining the Face-Swap Image and the User's Story.
  * Layout: Side-by-Side (Left: Image, Right: Text)
- * Dimensions: 1200x600 (2:1 Ratio)
+ * Dynamically scales to fit up to 150 words.
  */
 async function createGreetingCard(imagePath, story, outputPath) {
     try {
         const width = 1200;
-        const height = 600;
         const halfWidth = width / 2;
 
         // Default Story if empty
@@ -38,26 +49,64 @@ async function createGreetingCard(imagePath, story, outputPath) {
             ? story
             : "To the world you are a mother, but to our family you are a superhero.";
 
+        // Determine text sizing based on word count
+        const wordCount = finalStory.trim().split(/\s+/).length;
+
+        let bodyFontSize, lineHeight, maxCharsPerLine, titleFontSize;
+
+        if (wordCount <= 30) {
+            // Short story
+            bodyFontSize = 24;
+            lineHeight = 34;
+            maxCharsPerLine = 34;
+            titleFontSize = 36;
+        } else if (wordCount <= 60) {
+            // Medium story
+            bodyFontSize = 20;
+            lineHeight = 30;
+            maxCharsPerLine = 38;
+            titleFontSize = 32;
+        } else if (wordCount <= 100) {
+            // Long story
+            bodyFontSize = 17;
+            lineHeight = 25;
+            maxCharsPerLine = 42;
+            titleFontSize = 28;
+        } else {
+            // Very long story (up to 150 words)
+            bodyFontSize = 14;
+            lineHeight = 21;
+            maxCharsPerLine = 48;
+            titleFontSize = 26;
+        }
+
+        // Wrap text and compute required height
+        const lines = wrapText(escapeXml(finalStory), maxCharsPerLine);
+        const titleAreaHeight = 120; // Title + separator + spacing
+        const footerHeight = 60;     // Hashtag + bottom padding
+        const topPadding = 40;
+        const textContentHeight = lines.length * lineHeight;
+        const requiredTextHeight = topPadding + titleAreaHeight + textContentHeight + footerHeight;
+
+        // Card height: at least 600px, but taller if needed
+        const height = Math.max(600, requiredTextHeight + 40);
+
         // 1. Prepare the Face Swap Image (Left Side)
-        // Resize to cover the left half (600x600)
         const imageBuffer = await sharp(imagePath)
             .resize({
-                width: 600,
-                height: 600,
+                width: halfWidth,
+                height: height,
                 fit: 'cover',
-                position: 'top' // Focus on faces usually at top
+                position: 'top'
             })
             .toBuffer();
 
-        // Generate Text SVG
+        // 2. Generate Text SVG (Right Side)
         const title = "HAPPY MOTHER'S DAY!";
-        const titleFontSize = 36;
-        const bodyFontSize = 26;
-        const lineHeight = 36;
-        const startY = 250;
+        const startY = topPadding + titleAreaHeight;
 
         let textSvgContent = `
-      <svg width="600" height="600">
+      <svg width="${halfWidth}" height="${height}" xmlns="http://www.w3.org/2000/svg">
         <style>
           .title { fill: #F60945; font-family: sans-serif; font-weight: bold; font-size: ${titleFontSize}px; text-anchor: middle; letter-spacing: 1px; }
           .body { fill: #444444; font-family: sans-serif; font-style: italic; font-size: ${bodyFontSize}px; text-anchor: middle; }
@@ -65,37 +114,34 @@ async function createGreetingCard(imagePath, story, outputPath) {
         </style>
         
         <!-- Corner Decorations -->
-        <!-- Top Right Pink/Red Triangle -->
         <path d="M540 0 L600 0 L600 60 Z" fill="#F60945" fill-opacity="0.2" />
-        
-        <!-- Bottom Left Pink/Red Triangle -->
-        <path d="M0 600 L0 540 L60 600 Z" fill="#F60945" fill-opacity="0.2" />
+        <path d="M0 ${height} L0 ${height - 60} L60 ${height} Z" fill="#F60945" fill-opacity="0.2" />
 
         <!-- Title -->
-        <text x="300" y="180" class="title">${title}</text>
+        <text x="300" y="${topPadding + 50}" class="title">${title}</text>
         
         <!-- Separator -->
-        <rect x="270" y="200" width="60" height="4" rx="2" fill="#FFC700" />
+        <rect x="270" y="${topPadding + 65}" width="60" height="4" rx="2" fill="#FFC700" />
     `;
 
-        // Add Story Lines
-        const lines = wrapText(finalStory, 32);
+        // Add Story Lines (opening quote on first line, closing on last)
         lines.forEach((line, index) => {
-            if (index < 8) {
-                textSvgContent += `<text x="300" y="${startY + (index * lineHeight)}" class="body">"${line}"</text>`;
-            }
+            let displayLine = line;
+            if (index === 0) displayLine = `"${displayLine}`;
+            if (index === lines.length - 1) displayLine = `${displayLine}"`;
+            textSvgContent += `<text x="300" y="${startY + (index * lineHeight)}" class="body">${displayLine}</text>`;
         });
 
         // Footer
+        const footerY = Math.min(height - 30, startY + (lines.length * lineHeight) + 40);
         textSvgContent += `
-        <text x="300" y="530" class="footer">#KelloggsSuperMom</text>
+        <text x="300" y="${footerY}" class="footer">#KelloggsSuperMom</text>
       </svg>
     `;
 
         const textBuffer = Buffer.from(textSvgContent);
 
-        // 3. Composite
-        // Create base WHITE canvas
+        // 3. Composite: white canvas + image left + text right
         await sharp({
             create: {
                 width: width,
@@ -105,13 +151,13 @@ async function createGreetingCard(imagePath, story, outputPath) {
             }
         })
             .composite([
-                { input: imageBuffer, left: 0, top: 0 }, // Image on Left
-                { input: textBuffer, left: 600, top: 0 } // Text on Right
+                { input: imageBuffer, left: 0, top: 0 },
+                { input: textBuffer, left: halfWidth, top: 0 }
             ])
-            .jpeg({ quality: 80, mozjpeg: true }) // Compress output
+            .jpeg({ quality: 90, mozjpeg: true })
             .toFile(outputPath);
 
-        console.log(`✅ Greeting Card Generated: ${outputPath}`);
+        console.log(`✅ Greeting Card Generated: ${outputPath} (${width}x${height}, ${wordCount} words, ${lines.length} lines)`);
         return outputPath;
 
     } catch (error) {
