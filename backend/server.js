@@ -8,6 +8,22 @@ const { v4: uuidv4 } = require('uuid');
 const { createGreetingCard } = require('./utility/cardGenerator');
 const { spawn } = require('child_process');
 const sharp = require('sharp');
+const os = require('os');
+
+// --- PATH CONFIGURATION (Fix for Read-Only Containers) ---
+let UPLOAD_ROOT = __dirname;
+try {
+  fs.accessSync(__dirname, fs.constants.W_OK);
+} catch (e) {
+  console.log('⚠️ Root directory is read-only. Using system temp directory for uploads/results.');
+  UPLOAD_ROOT = os.tmpdir();
+}
+
+const UPLOADS_DIR = path.join(UPLOAD_ROOT, 'uploads');
+const RESULTS_DIR = path.join(UPLOAD_ROOT, 'results');
+const TEMPLATES_DIR = path.join(__dirname, 'templates'); // Source code (read-only okay)
+const MODELS_DIR = path.join(__dirname, 'models'); // Source code
+
 // Manual .env load
 const dotenv = require('dotenv');
 const dotenvPath = path.join(__dirname, '.env');
@@ -192,23 +208,27 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Static file serving
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/results', express.static(path.join(__dirname, 'results')));
-app.use('/templates', express.static(path.join(__dirname, 'templates')));
+// Static file serving
+app.use('/uploads', express.static(UPLOADS_DIR));
+app.use('/results', express.static(RESULTS_DIR));
+app.use('/templates', express.static(TEMPLATES_DIR));
 
 // Ensure directories exist
-const dirs = ['uploads', 'results', 'templates', 'models'];
-dirs.forEach(dir => {
-  const dirPath = path.join(__dirname, dir);
+const dirs = [UPLOADS_DIR, RESULTS_DIR, TEMPLATES_DIR, MODELS_DIR];
+dirs.forEach(dirPath => {
   if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
+    try {
+      fs.mkdirSync(dirPath, { recursive: true });
+    } catch (e) {
+      console.warn(`⚠️ Could not create directory ${dirPath}: ${e.message}`);
+    }
   }
 });
 
 // Multer configuration for file uploads — optimized for traffic
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, 'uploads'));
+    cb(null, UPLOADS_DIR);
   },
   filename: (req, file, cb) => {
     const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
@@ -252,7 +272,14 @@ const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString()
 // Helper: Send SMS via Termii
 const sendTermiiSMS = async (phoneNumber, otp) => {
   try {
-    const cleanPhone = phoneNumber.replace(/^\+/, ''); // Remove leading + if present
+    let cleanPhone = phoneNumber.replace(/^\+/, ''); // Remove +
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = '234' + cleanPhone.substring(1);
+    } else if (cleanPhone.startsWith('234')) {
+      // Already international
+    } else {
+      // Fallback: assume 234 if length is 10 (rare)
+    }
     const data = {
       to: cleanPhone,
       from: "N-Alert", // Default generic sender ID for Termii
@@ -703,7 +730,7 @@ app.post('/api/upload', (req, res, next) => {
     // Auto-compress uploaded image using Sharp (saves disk space & speeds up face swap)
     const originalPath = req.file.path;
     const compressedName = `opt_${req.file.filename}`;
-    const compressedPath = path.join(__dirname, 'uploads', compressedName);
+    const compressedPath = path.join(UPLOADS_DIR, compressedName);
 
     try {
       await sharp(originalPath)
@@ -823,13 +850,18 @@ const processJob = async (job) => {
     }
 
     const theme = { id: targetThemeId, template: templateFilename };
-    const sourceImagePath = path.join(__dirname, sourceImage.replace(/^\//, ''));
+
+    // Resolve source image path using UPLOADS_DIR provided by Multer or relative path logic
+    // If sourceImage contains /uploads/, strip it and use UPLOADS_DIR
+    const sourceFilename = path.basename(sourceImage);
+    const sourceImagePath = path.join(UPLOADS_DIR, sourceFilename);
+
     const resultFileName = `result_${jobId}.jpg`; // Card Output (JPG default for sharp)
-    const resultPath = path.join(__dirname, 'results', resultFileName);
+    const resultPath = path.join(RESULTS_DIR, resultFileName);
 
     // Intermediate Swap Image
     const swapFileName = `swap_${jobId}.png`;
-    const swapPath = path.join(__dirname, 'results', swapFileName);
+    const swapPath = path.join(RESULTS_DIR, swapFileName);
 
     // Validate Source
     if (!fs.existsSync(sourceImagePath)) {
