@@ -459,7 +459,7 @@ function AppContent() {
 
       {/* Landing Page View */}
       {viewState === 'landing' && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: '#fff', overflowY: 'auto' }}>
+        <div className="hide-scrollbar" style={{ position: 'fixed', inset: 0, zIndex: 1000, background: '#fff', overflowY: 'auto' }}>
            <LandingPage onStart={handleStartData} />
         </div>
       )}
