@@ -91,6 +91,8 @@ function AppContent() {
 
   // NEW: Write Her Story state
   const [momStory, setMomStory] = useState('');
+  const [momName, setMomName] = useState('');
+  const [momAlias, setMomAlias] = useState('');
 
   // Share Modal state
   const [showShareModal, setShowShareModal] = useState(false);
@@ -200,8 +202,8 @@ function AppContent() {
   // Generate face swap — called from Step 2 (Select Theme) now
   const handleGenerate = async () => {
     console.log('Generating started...');
-    if (!selectedTheme || !uploadedFile) {
-      setError('Please select a theme and upload an image.');
+    if (!selectedTheme || !uploadedFile || !momName || !momAlias) {
+      setError('Please fill in all required fields (Name, Alias, Photo) and select a theme.');
       return;
     }
 
@@ -219,7 +221,9 @@ function AppContent() {
       const response = await axios.post(`${API_URL}/api/face-swap`, {
         sourceImage: uploadedFile.path,
         themeId: selectedTheme.id,
-        story: momStory
+        story: momStory,
+        momName: momName,
+        momAlias: momAlias
       }, { timeout: 15000 });
 
       console.log('API Response:', response.data);
@@ -420,6 +424,8 @@ function AppContent() {
     setCurrentStep(1);
     setIsLoading(false);
     setMomStory('');
+    setMomName('');
+    setMomAlias('');
     setShowShareModal(false);
     setShareSuccess('');
     setShareTab('whatsapp');
@@ -538,6 +544,37 @@ function AppContent() {
               </div>
 
               <div className="story-section" style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '24px' }}>
+                <h3 className="story-title" style={{ fontFamily: 'Poppins', fontWeight: '800', marginBottom: '16px' }}>
+                  About Your Mother
+                </h3>
+
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: '180px' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#333', marginBottom: '6px' }}>Mother's Name <span style={{ color: '#F60945' }}>*</span></label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Mrs. Adebayo"
+                      value={momName}
+                      onChange={(e) => setMomName(e.target.value)}
+                      style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #ddd', fontFamily: 'Inter', fontSize: '0.95rem', outline: 'none', transition: 'border-color 0.2s' }}
+                      onFocus={(e) => e.target.style.borderColor = '#F60945'}
+                      onBlur={(e) => e.target.style.borderColor = '#ddd'}
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: '180px' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#333', marginBottom: '6px' }}>What do you call her? <span style={{ color: '#F60945' }}>*</span></label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Mama, Mummy, Iya"
+                      value={momAlias}
+                      onChange={(e) => setMomAlias(e.target.value)}
+                      style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #ddd', fontFamily: 'Inter', fontSize: '0.95rem', outline: 'none', transition: 'border-color 0.2s' }}
+                      onFocus={(e) => e.target.style.borderColor = '#F60945'}
+                      onBlur={(e) => e.target.style.borderColor = '#ddd'}
+                    />
+                  </div>
+                </div>
+
                 <h3 className="story-title" style={{ fontFamily: 'Poppins', fontWeight: '800', marginBottom: '12px' }}>
                   Write Her Story <span style={{ fontSize: '0.9rem', fontWeight: '400', color: '#888' }}>(Optional)</span>
                 </h3>
@@ -565,9 +602,16 @@ function AppContent() {
                 <div style={{ marginTop: '28px' }}>
                   <button 
                     className="btn-kelloggs"
-                    onClick={() => setCurrentStep(2)}
+                    onClick={() => {
+                        if (!momName.trim() || !momAlias.trim()) {
+                            setError('Please enter your mother\'s name and alias.');
+                            return;
+                        }
+                        setError('');
+                        setCurrentStep(2);
+                    }}
                   >
-                    Next: Select Theme <FiCheck />
+                    Next: Create Your Super Mom Now <FiCheck />
                   </button>
                 </div>
               )}
@@ -609,7 +653,6 @@ function AppContent() {
                     >
                       <IconComponent className="theme-icon-lg" />
                       <h3 style={{ marginBottom: '0.5rem', fontWeight: '800', fontFamily: 'Poppins, sans-serif' }}>{theme.title}</h3>
-                      <p style={{ fontSize: '0.88rem', color: '#888' }}>{theme.subtitle}</p>
                     </div>
                   );
                 })}
@@ -624,7 +667,7 @@ function AppContent() {
                   disabled={!selectedTheme}
                   onClick={handleGenerate}
                 >
-                  Generate Super Mom <FiZap />
+                  Create Your Super Mom Now <FiZap />
                 </button>
               </div>
             </motion.div>

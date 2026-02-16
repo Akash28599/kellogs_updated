@@ -2,7 +2,7 @@ import React from 'react';
 import './LandingPage.css';
 import kelloggsLogo from '../assets/kelloggs-logo.png';
 import heroImage from '../assets/Website banner bottom.png';
-import heroMotherDaughter from '../assets/hero-mother-daughter.png';
+import heroMotherDaughter from '../assets/hero-gemini.png';
 
 const LandingPage = ({ onStart }) => {
   return (
@@ -12,7 +12,7 @@ const LandingPage = ({ onStart }) => {
       <nav className="landing-nav">
         <img src={kelloggsLogo} alt="Kellogg's" className="landing-nav-logo" />
         <button className="landing-nav-btn" onClick={onStart}>
-          Get Started
+          Create Your Super Mom Now
         </button>
       </nav>
 
@@ -44,7 +44,7 @@ const LandingPage = ({ onStart }) => {
             <h3 className="hero-reward-text">20 MUMS. ONE EXCLUSIVE SPA EXPERIENCE.</h3>
 
             <button className="hero-cta" onClick={onStart}>
-              Create Your Superhero Now
+              Create Your Super Mom Now
               <span className="hero-cta-arrow">→</span>
             </button>
           </div>
@@ -64,7 +64,7 @@ const LandingPage = ({ onStart }) => {
       {/* ============ HERO IMAGE CARD (separate from hero, with spacing) ============ */}
       <div className="hero-image-wrapper">
         <div className="hero-image-section">
-          <div className="hero-image-card-simple" style={{ width: '100%', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 16px 50px rgba(0,0,0,0.25)' }}>
+          <div className="hero-image-card-simple" style={{ width: '100%', borderRadius: '0', overflow: 'hidden', boxShadow: '0 16px 50px rgba(0,0,0,0.25)' }}>
             <img
               src={heroImage}
               alt="The Alarm Hero - Superhero Mom"
@@ -139,7 +139,7 @@ const LandingPage = ({ onStart }) => {
 
         <div style={{ textAlign: 'center', marginTop: '36px' }}>
           <button className="hero-cta" onClick={onStart}>
-            Start Creating Now
+            Create Your Super Mom Now
             <span className="hero-cta-arrow">→</span>
           </button>
         </div>
