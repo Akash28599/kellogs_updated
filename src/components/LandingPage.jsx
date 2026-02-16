@@ -2,6 +2,7 @@ import React from 'react';
 import './LandingPage.css';
 import kelloggsLogo from '../assets/kelloggs-logo.png';
 import heroImage from '../assets/Website banner bottom.png';
+import heroMotherDaughter from '../assets/hero-mother-daughter.png';
 
 const LandingPage = ({ onStart }) => {
   return (
@@ -25,30 +26,39 @@ const LandingPage = ({ onStart }) => {
         <span className="star-decoration star-5">⭐</span>
         <span className="star-decoration star-6">★</span>
 
-        {/* Hero Content */}
-        <div className="hero-content">
-          {/* Badge Removed */}
+        <div className="hero-row">
+          {/* Hero Content — LEFT */}
+          <div className="hero-content">
+            <h1 className="hero-title">
+              Gift your mum an<br />
+              exclusive<br />
+              <span className="hero-title-highlight">luxury spa experience</span>
+            </h1>
 
-          <h1 className="hero-title">
-            Gift your mum an exclusive
-            <span className="hero-title-highlight"> luxury spa experience</span>
-          </h1>
+            <p className="hero-subtitle">
+              This Mother's Day, Kellogg's Nigeria is celebrating mums with the rest they truly deserve
+              through the My Mum, My Superhero contest.
+            </p>
 
-          <p className="hero-subtitle">
-            This Mother's Day, Kellogg's Nigeria is celebrating mums with the rest they truly deserve 
-            through the My Mum, My Superhero contest.
-          </p>
+            <p className="hero-reward-label">REWARD</p>
+            <h3 className="hero-reward-text">20 MUMS. ONE EXCLUSIVE SPA EXPERIENCE.</h3>
 
-          <p className="hero-reward-label">REWARD</p>
-          <h3 className="hero-reward-text">20 MUMS. ONE EXCLUSIVE SPA EXPERIENCE.</h3>
+            <button className="hero-cta" onClick={onStart}>
+              Create Your Superhero Now
+              <span className="hero-cta-arrow">→</span>
+            </button>
+          </div>
 
-          <button className="hero-cta" onClick={onStart}>
-            Create your Mom Hero Character
-            <span className="hero-cta-arrow">→</span>
-          </button>
+          {/* Hero Image — RIGHT */}
+          <div className="hero-image-right">
+            <div className="hero-image-right-card">
+              <img
+                src={heroMotherDaughter}
+                alt="Nigerian mother and daughter - Mother's Day"
+              />
+            </div>
+          </div>
         </div>
-
-        {/* Hero Image Card — shows full body — INSIDE hero section per Figma but rendered below hero text */}
       </section>
 
       {/* ============ HERO IMAGE CARD (separate from hero, with spacing) ============ */}
