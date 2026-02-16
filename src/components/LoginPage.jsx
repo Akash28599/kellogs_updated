@@ -11,7 +11,7 @@ const API_URL = 'http://localhost:5000';
 const GOOGLE_CLIENT_ID = ''; // Will be configured later
 
 const LoginPage = ({ onBack, onLogin }) => {
-  const [activeTab, setActiveTab] = useState('email');
+  const [activeTab, setActiveTab] = useState('phone'); // Phone first
   const [identifier, setIdentifier] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState('identifier');
@@ -42,8 +42,6 @@ const LoginPage = ({ onBack, onLogin }) => {
         signal: ac.signal
       }).then(otp => {
         setOtp(otp.code);
-        // Optional: Auto-submit if we're confident
-        // onLogin(identifier); 
       }).catch(err => {
         console.log('WebOTP Error:', err);
       });
@@ -56,7 +54,7 @@ const LoginPage = ({ onBack, onLogin }) => {
 
   const handleGoogleLogin = () => {
     if (!window.google || !GOOGLE_CLIENT_ID) {
-      setError('Google Sign-In is not configured yet. Please use Email or Phone login.');
+      setError('Google Sign-In is not configured yet. Please use Phone login.');
       return;
     }
 
@@ -100,7 +98,7 @@ const LoginPage = ({ onBack, onLogin }) => {
       if (activeTab === 'email' && !identifier.includes('@')) {
         throw new Error('Please enter a valid email address.');
       }
-      if (activeTab === 'phone' && identifier.length < 8) {
+      if (activeTab === 'phone' && identifier.replace(/[\s\-\+\(\)]/g, '').length < 8) {
         throw new Error('Please enter a valid phone number.');
       }
 
@@ -187,16 +185,16 @@ const LoginPage = ({ onBack, onLogin }) => {
             {step === 'identifier' && (
               <div className="auth-tabs">
                 <button 
-                  className={`tab ${activeTab === 'email' ? 'active' : ''}`}
-                  onClick={() => handleTabChange('email')}
-                >
-                  Email
-                </button>
-                <button 
                   className={`tab ${activeTab === 'phone' ? 'active' : ''}`}
                   onClick={() => handleTabChange('phone')}
                 >
-                  Phone
+                  <FiPhone style={{ marginRight: '6px', verticalAlign: 'middle' }} /> Phone
+                </button>
+                <button 
+                  className={`tab ${activeTab === 'email' ? 'active' : ''}`}
+                  onClick={() => handleTabChange('email')}
+                >
+                  <FiMail style={{ marginRight: '6px', verticalAlign: 'middle' }} /> Email <span className="tab-optional">(optional)</span>
                 </button>
               </div>
             )}
@@ -211,12 +209,12 @@ const LoginPage = ({ onBack, onLogin }) => {
               <>
                 <form onSubmit={handleSendOtp}>
                   <div className="input-group">
-                    <label>{activeTab === 'email' ? 'Email Address' : 'Phone Number'}</label>
+                    <label>{activeTab === 'phone' ? 'Phone Number' : 'Email Address'}</label>
                     <div className="input-wrapper">
-                      {activeTab === 'email' ? <FiMail className="input-icon" /> : <FiPhone className="input-icon" />}
+                      {activeTab === 'phone' ? <FiPhone className="input-icon" /> : <FiMail className="input-icon" />}
                       <input 
-                        type={activeTab === 'email' ? "email" : "tel"} 
-                        placeholder={activeTab === 'email' ? "your.email@example.com" : "e.g. +234 800 000 0000"}
+                        type={activeTab === 'phone' ? "tel" : "email"} 
+                        placeholder={activeTab === 'phone' ? "e.g. +234 800 000 0000" : "your.email@example.com"}
                         value={identifier}
                         onChange={(e) => setIdentifier(e.target.value)}
                         required 

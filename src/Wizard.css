@@ -1348,11 +1348,13 @@
         transform: scale(1);
     }
 }
+
 /* PC Optimizations: Spread themes out more on larger screens */
 @media (min-width: 1024px) {
     .wizard-card {
         max-width: 1200px;
     }
+
     .theme-grid {
         grid-template-columns: repeat(6, 1fr);
     }
@@ -1362,6 +1364,7 @@
     .wizard-card {
         max-width: 1600px;
     }
+
     .theme-grid {
         grid-template-columns: repeat(8, 1fr);
     }
@@ -1371,31 +1374,33 @@
 .greeting-card-container {
     display: flex;
     flex-direction: row;
-    background: #F60945;
     border-radius: 20px;
     overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
     margin-bottom: 30px;
-    min-height: 400px;
+    height: 550px;
+    background: #fff;
 }
 
 .card-image-side {
     flex: 1;
-    background: #000;
+    background: #c7072e;
     position: relative;
-    min-height: 250px;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .card-image-side img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    object-position: center;
     display: block;
 }
 
 .card-message-side {
     flex: 1;
-    padding: 40px 30px;
+    padding: 30px 24px;
     background: #fff;
     display: flex;
     flex-direction: column;
@@ -1403,19 +1408,25 @@
     align-items: center;
     text-align: center;
     position: relative;
+    overflow-y: auto;
+    min-width: 0;
 }
 
 @media (max-width: 768px) {
     .greeting-card-container {
         flex-direction: column;
+        height: auto;
         min-height: auto;
     }
+
     .card-image-side {
         width: 100%;
-        height: 350px;
+        height: 400px;
         flex: none;
     }
+
     .card-message-side {
-        padding: 30px 20px;
+        padding: 24px 20px;
+        max-height: 400px;
     }
 }

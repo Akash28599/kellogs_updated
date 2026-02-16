@@ -197,7 +197,7 @@ function AppContent() {
     return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
   };
 
-  // Generate face swap — called from Step 3 (Write Story) now
+  // Generate face swap — called from Step 2 (Select Theme) now
   const handleGenerate = async () => {
     console.log('Generating started...');
     if (!selectedTheme || !uploadedFile) {
@@ -212,23 +212,66 @@ function AppContent() {
     setIsFallback(false);
 
     try {
-      setLoadingMessage('Working magic with AI face swap...');
+      setLoadingMessage('Queuing your superhero transformation...');
       console.log('Sending API request...');
       
+      // Step 1: Submit job to queue
       const response = await axios.post(`${API_URL}/api/face-swap`, {
         sourceImage: uploadedFile.path,
         themeId: selectedTheme.id,
-        story: momStory // send story along
-      }, { timeout: 120000 });
+        story: momStory
+      }, { timeout: 15000 });
 
       console.log('API Response:', response.data);
 
-      if (response.data.success) {
-        setResultImage(`${API_URL}${response.data.result.imageUrl}`);
-        setResultBlobUrl(response.data.result.blobUrl || '');
+      if (response.data.success && response.data.jobId) {
+        const jobId = response.data.jobId;
+        setLoadingMessage('Working magic with AI face swap...');
+
+        // Step 2: Poll for job completion
+        const pollInterval = 3000; // 3 seconds
+        const maxPolls = 40; // Max 2 minutes
+        let polls = 0;
+
+        const pollForResult = () => {
+          return new Promise((resolve, reject) => {
+            const checkStatus = async () => {
+              polls++;
+              try {
+                const statusRes = await axios.get(`${API_URL}/api/status/${jobId}`);
+                const jobData = statusRes.data;
+
+                if (jobData.status === 'completed' && jobData.result) {
+                  resolve(jobData.result);
+                } else if (jobData.status === 'failed') {
+                  reject(new Error(jobData.error || 'Job failed'));
+                } else if (polls >= maxPolls) {
+                  reject(new Error('Processing timed out'));
+                } else {
+                  // Update loading message
+                  if (polls > 5) setLoadingMessage('Almost there... adding finishing touches...');
+                  else if (polls > 2) setLoadingMessage('Creating your superhero card...');
+                  setTimeout(checkStatus, pollInterval);
+                }
+              } catch (err) {
+                if (polls >= maxPolls) {
+                  reject(err);
+                } else {
+                  setTimeout(checkStatus, pollInterval);
+                }
+              }
+            };
+            checkStatus();
+          });
+        };
+
+        const result = await pollForResult();
+        setResultImage(`${API_URL}${result.imageUrl}`);
+        setResultBlobUrl(result.blobUrl || '');
         setCurrentStep(4); // Result step (Step 4)
+
       } else {
-        throw new Error(response.data.message || 'Generation failed');
+        throw new Error(response.data.message || 'Failed to queue job');
       }
     } catch (err) {
       console.error('Generation Error:', err);
@@ -686,66 +729,19 @@ function AppContent() {
                     </button>
                   </div>
                 )}
-                <div className="greeting-card-container">
-                  {/* Left Side: Generated Image */}
-                  <div className="card-image-side">
-                    <img 
-                      src={resultImage} 
-                      alt="Super Mom" 
-                    />
-                    <div style={{ position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '10px', padding: '4px 8px', borderRadius: '4px' }}>
-                      AI Generated
-                    </div>
-                  </div>
-
-                  {/* Right Side: Message & Branding */}
-                  <div className="card-message-side">
-                    {/* Corner Decorations */}
-                    <div style={{ position: 'absolute', top: '0', right: '0', width: '60px', height: '60px', background: 'linear-gradient(135deg, transparent 50%, #F60945 50%)', opacity: 0.1 }}></div>
-                    <div style={{ position: 'absolute', bottom: '0', left: '0', width: '60px', height: '60px', background: 'linear-gradient(135deg, #F60945 50%, transparent 50%)', opacity: 0.1 }}></div>
-
-                    <img 
-                      src={kelloggsLogo} 
-                      alt="Kellogg's" 
-                      style={{ width: '120px', marginBottom: '24px' }} 
-                    />
-
-                    <h3 style={{ 
-                      fontFamily: 'Poppins, sans-serif', 
-                      fontWeight: '800', 
-                      fontSize: '1.4rem', 
-                      color: '#F60945', 
-                      marginBottom: '16px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '1px'
-                    }}>
-                      Happy Mother's Day!
-                    </h3>
-
-                    <div style={{ 
-                      width: '60px', 
-                      height: '4px', 
-                      background: '#FFC700', 
-                      marginBottom: '24px', 
-                      borderRadius: '2px' 
-                    }}></div>
-
-                    <p style={{ 
-                      fontFamily: 'Caveat, cursive', // Assuming a handwritten font availability or fallback
-                      fontSize: '1.2rem', 
-                      color: '#444', 
-                      lineHeight: '1.6', 
-                      fontStyle: 'italic',
-                      marginBottom: '30px',
-                      maxWidth: '85%'
-                    }}>
-                      "{momStory || "To the world you are a mother, but to our family you are a superhero. Thank you for everything you do!"}"
-                    </p>
-
-                    <div style={{ fontSize: '0.9rem', fontWeight: '700', color: '#F60945' }}>
-                      #KelloggsSuperMom
-                    </div>
-                  </div>
+                <div className="greeting-card-display">
+                  <img 
+                    src={resultImage} 
+                    alt="Super Mom Greeting Card"
+                    style={{
+                      width: '100%',
+                      maxWidth: '800px',
+                      borderRadius: '16px',
+                      boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+                      display: 'block',
+                      margin: '0 auto 30px'
+                    }}
+                  />
                 </div>
 
                 {/* Buttons */}
