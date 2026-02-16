@@ -50,36 +50,39 @@ async function createGreetingCard(imagePath, story, outputPath) {
             .toBuffer();
 
         // Generate Text SVG
-        const title = "HAPPY MOTHER'S DAY";
-        const titleFontSize = 42;
-        const bodyFontSize = 30;
-        const lineHeight = 40;
-        const startY = 220;
+        const title = "HAPPY MOTHER'S DAY!";
+        const titleFontSize = 36;
+        const bodyFontSize = 26;
+        const lineHeight = 36;
+        const startY = 250;
 
         let textSvgContent = `
       <svg width="600" height="600">
         <style>
-          .title { fill: #FFD700; font-family: 'Times New Roman', serif; font-weight: bold; font-size: ${titleFontSize}px; text-anchor: middle; letter-spacing: 2px; }
-          .body { fill: white; font-family: 'Times New Roman', serif; font-size: ${bodyFontSize}px; text-anchor: middle; }
-          .footer { fill: rgba(255,255,255,0.8); font-family: sans-serif; font-size: 16px; text-anchor: middle; letter-spacing: 1px; }
+          .title { fill: #F60945; font-family: sans-serif; font-weight: bold; font-size: ${titleFontSize}px; text-anchor: middle; letter-spacing: 1px; }
+          .body { fill: #444444; font-family: sans-serif; font-style: italic; font-size: ${bodyFontSize}px; text-anchor: middle; }
+          .footer { fill: #F60945; font-family: sans-serif; font-weight: bold; font-size: 16px; text-anchor: middle; }
         </style>
         
-        <!-- Outer Border -->
-        <rect x="30" y="30" width="540" height="540" rx="0" ry="0" fill="none" stroke="#FFD700" stroke-width="4" />
-        <rect x="45" y="45" width="510" height="510" rx="0" ry="0" fill="none" stroke="white" stroke-width="1" stroke-opacity="0.5" />
+        <!-- Corner Decorations -->
+        <!-- Top Right Pink/Red Triangle -->
+        <path d="M540 0 L600 0 L600 60 Z" fill="#F60945" fill-opacity="0.2" />
+        
+        <!-- Bottom Left Pink/Red Triangle -->
+        <path d="M0 600 L0 540 L60 600 Z" fill="#F60945" fill-opacity="0.2" />
 
         <!-- Title -->
-        <text x="300" y="140" class="title">${title}</text>
+        <text x="300" y="180" class="title">${title}</text>
         
         <!-- Separator -->
-        <line x1="200" y1="160" x2="400" y2="160" stroke="#FFD700" stroke-width="2" />
+        <rect x="270" y="200" width="60" height="4" rx="2" fill="#FFC700" />
     `;
 
         // Add Story Lines
-        const lines = wrapText(finalStory, 28); // Tighter wrap for serif font
+        const lines = wrapText(finalStory, 32);
         lines.forEach((line, index) => {
             if (index < 8) {
-                textSvgContent += `<text x="300" y="${startY + (index * lineHeight)}" class="body">${line}</text>`;
+                textSvgContent += `<text x="300" y="${startY + (index * lineHeight)}" class="body">"${line}"</text>`;
             }
         });
 
@@ -92,13 +95,13 @@ async function createGreetingCard(imagePath, story, outputPath) {
         const textBuffer = Buffer.from(textSvgContent);
 
         // 3. Composite
-        // Create base red canvas
+        // Create base WHITE canvas
         await sharp({
             create: {
                 width: width,
                 height: height,
                 channels: 4,
-                background: { r: 246, g: 9, b: 69, alpha: 1 } // Kellogg's Red #F60945
+                background: { r: 255, g: 255, b: 255, alpha: 1 }
             }
         })
             .composite([
