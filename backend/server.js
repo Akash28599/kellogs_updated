@@ -22,7 +22,7 @@ try {
 const UPLOADS_DIR = path.join(UPLOAD_ROOT, 'uploads');
 const RESULTS_DIR = path.join(UPLOAD_ROOT, 'results');
 const TEMPLATES_DIR = path.join(__dirname, 'templates'); // Source code (read-only okay)
-const MODELS_DIR = path.join(__dirname, 'models'); // Source code
+const MODELS_DIR = path.join(UPLOAD_ROOT, 'models'); // Must be writable for downloads
 
 // Manual .env load
 const dotenv = require('dotenv');
@@ -81,9 +81,10 @@ console.log('🔧 DB Config Check:', {
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT) || 5432,
-  database: process.env.DB_NAME || 'postgres', // Default to 'postgres' system DB
+  database: process.env.DB_NAME || 'postgres',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASS || 'Akashkk99@',
+  ssl: process.env.DB_HOST !== 'localhost' ? { rejectUnauthorized: false } : undefined,
 });
 
 // ---- Azure Blob Storage Connection ----
@@ -800,18 +801,19 @@ app.post('/api/upload', (req, res, next) => {
 let PYTHON_AVAILABLE = false;
 
 const checkPythonAvailability = () => {
-  const pythonPath = process.env.PYTHON_PATH || 'python';
-  // Check if python exists and has insightface (our core requirement)
+  const IS_WINDOWS = os.platform() === 'win32';
+  const cmd = IS_WINDOWS ? 'py -3.10' : 'python3'; // Use python3 on Linux
+
+  // Check if python exists and has insightface
   const { exec } = require('child_process');
 
-  // Specifically check Python 3.10 environment
-  exec('py -3.10 -c "import insightface; print(\'ok\')"', (error, stdout, stderr) => {
+  exec(`${cmd} -c "import insightface; print('ok')"`, (error, stdout, stderr) => {
     if (error) {
-      console.log('⚠️ Python or OpenCV not found. Face swap will run in DEMO MODE (Instant Fallback).');
+      console.log(`⚠️ Python or InsightFace not found using '${cmd}'. Face swap will run in DEMO MODE.`);
       console.log('   Error:', error.message);
       PYTHON_AVAILABLE = false;
     } else {
-      console.log('✅ Python and OpenCV detected. AI Face Swap is ENABLED.');
+      console.log(`✅ Python and InsightFace detected (${cmd}). AI Face Swap is ENABLED.`);
       PYTHON_AVAILABLE = true;
     }
   });
@@ -925,15 +927,28 @@ const processJob = async (job) => {
     // AI Execution
     console.log(`🚀 Spawning Python for Job ${jobId}...`);
     const scriptPath = path.join(__dirname, 'face_swap.py');
-    const args = [
-      '-3.10', scriptPath,
+    const IS_WINDOWS = os.platform() === 'win32';
+
+    // Construct command and args based on OS
+    let cmd, cmdArgs;
+
+    if (IS_WINDOWS) {
+      cmd = 'py';
+      cmdArgs = ['-3.10', scriptPath];
+    } else {
+      cmd = 'python3';
+      cmdArgs = [scriptPath];
+    }
+
+    // Common args
+    cmdArgs.push(
       '--source', sourceImagePath,
       '--target', templatePath,
-      '--output', swapPath, // Output is now SWAP path, not result path
+      '--output', swapPath,
       '--cpu'
-    ];
+    );
 
-    const pythonProcess = spawn('py', args);
+    const pythonProcess = spawn(cmd, cmdArgs);
 
     // 90s Timeout
     const pythonTimeout = setTimeout(() => {
