@@ -653,11 +653,41 @@ app.get('/api/themes', (req, res) => {
       // Create flexible ID
       const id = nameWithoutExt.toLowerCase().replace(/[^a-z0-9]/g, '-');
 
+      // Dynamic Subtitles
+      const descriptions = {
+        'captain-early-riser': 'Hero of Morning Routines',
+        'the-cheerleader-in-chief': 'Sparking Joy & Confidence',
+        'the-clean-up-commander': 'Tackling every mess with precision.',
+        'the-disciplinarian': 'Keeping us on the straight and narrow.',
+        'the-dreamer': 'Imagining a better world for us.',
+        'the-economizer': 'Maximizing value, minimizing waste.',
+        'the-emotional-responder': 'Always there with a hug.',
+        'the-fashion-police': 'Making sure we look our best.',
+        'the-fashion-police-': 'Making sure we look our best.',
+        'the-fix-it-fairy': 'Mending broken toys and hearts.',
+        'the-human-alarm': 'Waking us up with love.',
+        'the-human-gps': 'Never getting lost (or losing us!).',
+        'the-lie-detector': 'Knowing the truth before we speak.',
+        'the-memory-vault': 'Holding onto every precious moment.',
+        'the-negotiator': 'Solving conflicts with ease.',
+        'the-never-rest': 'Tirelessly working for the family.',
+        'the-noise-rader': 'Detecting mischief from a mile away.',
+        'the-nourisher': 'Providing sustenance and comfort.',
+        'the-nourisher-': 'Providing sustenance and comfort.',
+        'the-prayer-warrior': 'Covering us in daily blessings.',
+        'the-prayer-warrior-': 'Covering us in daily blessings.',
+        'the-prophet': 'Foreseeing our needs before we do.',
+        'the-safe-place': 'Our refuge from the storm.',
+        'the-silent-sacrificer': 'Giving up everything without asking.'
+      };
+
+      const customSubtitle = descriptions[id] || descriptions[id.replace(/-/g, '_')] || 'Super Mom Power';
+
       return {
         id: id,
         name: title,
         title: title,
-        subtitle: 'Super Mom Power',
+        subtitle: customSubtitle,
         description: 'Celebrating the amazing strength of mothers everywhere.',
         template: file,
         color: '#E41E26', // Kellogg's Red default
@@ -810,7 +840,7 @@ const processNextJob = () => {
 };
 
 const processJob = async (job) => {
-  const { jobId, sourceImage, themeId, themeName, story, userIdentifier } = job;
+  const { jobId, sourceImage, themeId, themeName, story, userIdentifier, momName, momAlias } = job;
 
   // Update status to processing
   jobStore.set(jobId, { status: 'processing', startTime: Date.now() });
@@ -876,7 +906,7 @@ const processJob = async (job) => {
       fs.copyFileSync(templatePath, swapPath);
 
       // Create Card from Fallback
-      await createGreetingCard(swapPath, story, resultPath);
+      await createGreetingCard(swapPath, story, resultPath, momName, momAlias);
 
       // Success (Demo)
       const result = {
@@ -922,7 +952,7 @@ const processJob = async (job) => {
 
         // Generate Greeting Card (Final Output)
         console.log(`🎨 Creating Greeting Card for Job ${jobId}...`);
-        await createGreetingCard(swapPath, story, resultPath);
+        await createGreetingCard(swapPath, story, resultPath, momName, momAlias);
 
         // Cleanup intermediate swap
         try { if (fs.existsSync(swapPath)) fs.unlinkSync(swapPath); } catch (e) { }
@@ -1004,7 +1034,7 @@ const recordSubmission = async (job, resultPath, blobUrl, status) => {
 
 // 1. ENQUEUE ENDPOINT
 app.post('/api/face-swap', (req, res) => {
-  const { sourceImage, themeId, theme: themeName, story, userIdentifier } = req.body;
+  const { sourceImage, themeId, theme: themeName, story, userIdentifier, momName, momAlias } = req.body;
 
   if (!sourceImage || (!themeId && !themeName)) {
     return res.status(400).json({ success: false, message: 'Source image and theme required' });
@@ -1018,6 +1048,8 @@ app.post('/api/face-swap', (req, res) => {
     themeName,
     story,
     userIdentifier,
+    momName,
+    momAlias,
     timestamp: Date.now()
   };
 

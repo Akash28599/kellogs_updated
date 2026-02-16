@@ -39,9 +39,9 @@ function escapeXml(text) {
  * Layout: Side-by-Side (Left: Image, Right: Text)
  * Dynamically scales to fit up to 150 words.
  */
-async function createGreetingCard(imagePath, story, outputPath) {
+async function createGreetingCard(imagePath, story, outputPath, momName, momAlias) {
     try {
-        const width = 1200;
+        const width = 2400;
         const halfWidth = width / 2;
 
         // Default Story if empty
@@ -49,93 +49,114 @@ async function createGreetingCard(imagePath, story, outputPath) {
             ? story
             : "To the world you are a mother, but to our family you are a superhero.";
 
+        // Construct Greeting
+        let greeting = "";
+        if (momName) {
+            greeting = `Dear ${momName}`;
+            if (momAlias) {
+                greeting += ` (${momAlias})`;
+            }
+            greeting += ",";
+        }
+
         // Determine text sizing based on word count
         const wordCount = finalStory.trim().split(/\s+/).length;
 
-        let bodyFontSize, lineHeight, maxCharsPerLine, titleFontSize;
+        let bodyFontSize, lineHeight, maxCharsPerLine, titleFontSize, greetingFontSize;
 
         if (wordCount <= 30) {
-            // Short story
-            bodyFontSize = 24;
-            lineHeight = 34;
+            bodyFontSize = 48;
+            lineHeight = 68;
             maxCharsPerLine = 34;
-            titleFontSize = 36;
+            titleFontSize = 72;
+            greetingFontSize = 52;
         } else if (wordCount <= 60) {
-            // Medium story
-            bodyFontSize = 20;
-            lineHeight = 30;
+            bodyFontSize = 40;
+            lineHeight = 60;
             maxCharsPerLine = 38;
-            titleFontSize = 32;
+            titleFontSize = 64;
+            greetingFontSize = 44;
         } else if (wordCount <= 100) {
-            // Long story
-            bodyFontSize = 17;
-            lineHeight = 25;
+            bodyFontSize = 34;
+            lineHeight = 50;
             maxCharsPerLine = 42;
-            titleFontSize = 28;
+            titleFontSize = 56;
+            greetingFontSize = 38;
         } else {
-            // Very long story (up to 150 words)
-            bodyFontSize = 14;
-            lineHeight = 21;
+            bodyFontSize = 28;
+            lineHeight = 42;
             maxCharsPerLine = 48;
-            titleFontSize = 26;
+            titleFontSize = 52;
+            greetingFontSize = 32;
         }
 
         // Wrap text and compute required height
         const lines = wrapText(escapeXml(finalStory), maxCharsPerLine);
-        const titleAreaHeight = 120; // Title + separator + spacing
-        const footerHeight = 60;     // Hashtag + bottom padding
-        const topPadding = 40;
-        const textContentHeight = lines.length * lineHeight;
-        const requiredTextHeight = topPadding + titleAreaHeight + textContentHeight + footerHeight;
 
-        // Card height: at least 600px, but taller if needed
-        const height = Math.max(600, requiredTextHeight + 40);
+        const titleAreaHeight = 240;
+        const greetingHeight = greeting ? (lineHeight * 1.5) : 0; // Space for greeting
+        const footerHeight = 120;
+        const topPadding = 80;
+        const textContentHeight = lines.length * lineHeight;
+        const requiredTextHeight = topPadding + titleAreaHeight + greetingHeight + textContentHeight + footerHeight;
+
+        // Card height: at least 1200px, but taller if needed
+        const height = Math.max(1200, requiredTextHeight + 80);
 
         // 1. Prepare the Face Swap Image (Left Side)
         const imageBuffer = await sharp(imagePath)
             .resize({
                 width: halfWidth,
                 height: height,
-                fit: 'cover',
-                position: 'top'
+                fit: 'contain',
+                position: 'centre',
+                background: { r: 198, g: 7, b: 46, alpha: 1 }
             })
             .toBuffer();
 
         // 2. Generate Text SVG (Right Side)
         const title = "HAPPY MOTHER'S DAY!";
-        const startY = topPadding + titleAreaHeight;
+        // Start Y position for the first element after title
+        let currentY = topPadding + titleAreaHeight;
 
         let textSvgContent = `
       <svg width="${halfWidth}" height="${height}" xmlns="http://www.w3.org/2000/svg">
         <style>
-          .title { fill: #F60945; font-family: sans-serif; font-weight: bold; font-size: ${titleFontSize}px; text-anchor: middle; letter-spacing: 1px; }
+          .title { fill: #F60945; font-family: sans-serif; font-weight: bold; font-size: ${titleFontSize}px; text-anchor: middle; letter-spacing: 2px; }
+          .greeting { fill: #F60945; font-family: sans-serif; font-weight: bold; font-size: ${greetingFontSize}px; text-anchor: middle; }
           .body { fill: #444444; font-family: sans-serif; font-style: italic; font-size: ${bodyFontSize}px; text-anchor: middle; }
-          .footer { fill: #F60945; font-family: sans-serif; font-weight: bold; font-size: 16px; text-anchor: middle; }
+          .footer { fill: #F60945; font-family: sans-serif; font-weight: bold; font-size: 32px; text-anchor: middle; }
         </style>
         
         <!-- Corner Decorations -->
-        <path d="M540 0 L600 0 L600 60 Z" fill="#F60945" fill-opacity="0.2" />
-        <path d="M0 ${height} L0 ${height - 60} L60 ${height} Z" fill="#F60945" fill-opacity="0.2" />
+        <path d="M1080 0 L1200 0 L1200 120 Z" fill="#F60945" fill-opacity="0.2" />
+        <path d="M0 ${height} L0 ${height - 120} L120 ${height} Z" fill="#F60945" fill-opacity="0.2" />
 
         <!-- Title -->
-        <text x="300" y="${topPadding + 50}" class="title">${title}</text>
+        <text x="600" y="${topPadding + 100}" class="title">${title}</text>
         
         <!-- Separator -->
-        <rect x="270" y="${topPadding + 65}" width="60" height="4" rx="2" fill="#FFC700" />
+        <rect x="540" y="${topPadding + 130}" width="120" height="8" rx="4" fill="#FFC700" />
     `;
 
-        // Add Story Lines (opening quote on first line, closing on last)
+        // Add Greeting if exists
+        if (greeting) {
+            textSvgContent += `<text x="600" y="${currentY}" class="greeting">${escapeXml(greeting)}</text>`;
+            currentY += greetingHeight;
+        }
+
+        // Add Story Lines
         lines.forEach((line, index) => {
             let displayLine = line;
             if (index === 0) displayLine = `"${displayLine}`;
             if (index === lines.length - 1) displayLine = `${displayLine}"`;
-            textSvgContent += `<text x="300" y="${startY + (index * lineHeight)}" class="body">${displayLine}</text>`;
+            textSvgContent += `<text x="600" y="${currentY + (index * lineHeight)}" class="body">${displayLine}</text>`;
         });
 
         // Footer
-        const footerY = Math.min(height - 30, startY + (lines.length * lineHeight) + 40);
+        const footerY = Math.min(height - 60, currentY + (lines.length * lineHeight) + 80);
         textSvgContent += `
-        <text x="300" y="${footerY}" class="footer">#KelloggsSuperMom</text>
+        <text x="600" y="${footerY}" class="footer">#KelloggsMorningHero</text>
       </svg>
     `;
 
@@ -154,7 +175,7 @@ async function createGreetingCard(imagePath, story, outputPath) {
                 { input: imageBuffer, left: 0, top: 0 },
                 { input: textBuffer, left: halfWidth, top: 0 }
             ])
-            .jpeg({ quality: 90, mozjpeg: true })
+            .jpeg({ quality: 95, mozjpeg: true })
             .toFile(outputPath);
 
         console.log(`✅ Greeting Card Generated: ${outputPath} (${width}x${height}, ${wordCount} words, ${lines.length} lines)`);
